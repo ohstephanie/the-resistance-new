@@ -22,12 +22,12 @@ httpServer.addListener("close", () => {
 
 app.get("/api/statistics", (req, res) => {
   const players = server.sockets.size;
-  const lobbies = server.rooms.size;
-  const games = Array.from(server.rooms.values()).map(
-    (x) => x.game !== null
-  ).length;
+  const queueSize = server.queueManager.getQueueSize();
+  const lobbies = server.queueManager.getTotalRooms();
+  const games = server.queueManager.getActiveGames();
   return res.json({
     players,
+    queueSize,
     lobbies,
     games,
   });

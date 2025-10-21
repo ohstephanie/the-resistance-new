@@ -66,6 +66,9 @@ const MOCK_STATE: { lobby: LobbyState; game: GameState; client: ClientState } =
         mole: true,
       },
       inGame: true,
+      inQueue: false,
+      queuePosition: 0,
+      playerName: "",
     },
     game: {
       player: {

@@ -8,6 +8,9 @@ const lobbyInGame = (state: RootState) => state.lobby.inGame;
 const lobbyMembers = (state: RootState) => state.lobby.memberIDs;
 const lobbyNames = (state: RootState) => state.lobby.names;
 const lobbyGameOptions = (state: RootState) => state.lobby.gameInitOptions;
+const inQueue = (state: RootState) => state.lobby.inQueue;
+const queuePosition = (state: RootState) => state.lobby.queuePosition;
+const playerName = (state: RootState) => state.lobby.playerName;
 
 const lobbyIndex = createSelector(
   socketID,
@@ -30,4 +33,7 @@ export const LobbySelector = {
   lobbyGameOptions,
   lobbyIndex,
   lobbyIsHost,
+  inQueue,
+  queuePosition,
+  playerName,
 };

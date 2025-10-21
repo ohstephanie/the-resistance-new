@@ -12,6 +12,7 @@ import AboutView from "./about/AboutView";
 import GameView from "./game/GameView";
 import HowToPlayView from "./how-to-play/HowToPlayView";
 import LobbyView from "./lobby/LobbyView";
+import QueueView from "./lobby/QueueView";
 import WelcomeView from "./welcome/WelcomeView";
 
 export default function App() {
@@ -45,13 +46,24 @@ export default function App() {
 
 function MainView() {
   const lobbyID = useSelector(LobbySelector.lobbyID);
+  const inQueue = useSelector(LobbySelector.inQueue);
   const youInGame = useSelector(GameSelector.youInGame);
-  const view = lobbyID === "" ? "welcome" : youInGame ? "game" : "lobby";
+  
+  let view = "welcome";
+  if (youInGame) {
+    view = "game";
+  } else if (lobbyID !== "") {
+    view = "lobby";
+  } else if (inQueue) {
+    view = "queue";
+  }
 
   return view === "game" ? (
     <GameView />
   ) : view === "lobby" ? (
     <LobbyView />
+  ) : view === "queue" ? (
+    <QueueView />
   ) : (
     <WelcomeView />
   );

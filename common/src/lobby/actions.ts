@@ -21,6 +21,12 @@ export const clientJoinLobby = createAction<{ name: string; roomID: string }>(
   "lobby/client-join"
 );
 
+// Tell the server that you'd like to join the queue
+export const clientJoinQueue = createAction("lobby/client-join-queue");
+
+// Tell the server that you'd like to leave the queue
+export const clientLeaveQueue = createAction("lobby/client-leave-queue");
+
 // Tell the server that you'd like to leave a lobby
 export const clientLeaveLobby = createAction("lobby/client-leave");
 
@@ -52,3 +58,9 @@ export const updateGameOptions = createAction<{
 export const updateGameState = createAction<{ inGame: boolean }>(
   "lobby/update-game-state"
 );
+
+export const updateQueueState = createAction<{ 
+  inQueue: boolean; 
+  queuePosition: number; 
+  name: string; 
+}>("lobby/update-queue-state");

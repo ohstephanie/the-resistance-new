@@ -2,19 +2,24 @@ import { AnyAction } from "@reduxjs/toolkit";
 import { LobbyAction } from "common-modules";
 import socketIO, { Socket } from "socket.io";
 import { Lobby } from "./lobby";
+import { QueueManager } from "./queue";
 import { actionFromServer, RoomCodeManager } from "./util";
 
 export class Server {
   io: socketIO.Server;
   sockets: Map<string, string | null>;
-  rooms: Map<string, Lobby>;
   idManager: RoomCodeManager;
+  queueManager: QueueManager;
   constructor(io: socketIO.Server) {
     this.io = io;
     this.io.on("connection", this.onConnection.bind(this));
     this.sockets = new Map();
-    this.rooms = new Map();
     this.idManager = new RoomCodeManager();
+    this.queueManager = new QueueManager(io, this.sockets);
+  }
+  
+  get rooms() {
+    return this.queueManager.rooms;
   }
   onConnection(socket: Socket) {
     console.log("Connect", socket.id);
@@ -26,6 +31,10 @@ export class Server {
     console.log("Disconnect", socket.id);
     const roomID = this.sockets.get(socket.id);
     this.sockets.delete(socket.id);
+    
+    // Remove from queue if in queue
+    this.queueManager.removeFromQueue(socket.id);
+    
     if (!roomID) return;
     const room = this.rooms.get(roomID);
     if (!room) return;
@@ -37,35 +46,21 @@ export class Server {
     }
   }
   onAction(socket: Socket, action: AnyAction) {
-    const clientCreateLobby = LobbyAction.clientCreateLobby.type;
-    const clientJoinLobby = LobbyAction.clientJoinLobby.type;
+    const clientJoinQueue = LobbyAction.clientJoinQueue.type;
+    const clientLeaveQueue = LobbyAction.clientLeaveQueue.type;
     const clientLeaveLobby = LobbyAction.clientLeaveLobby.type;
-    if (action.type === clientCreateLobby) {
-      // Protect against double create
+    
+    if (action.type === clientJoinQueue) {
+      // Protect against double join
       if (this.sockets.get(socket.id)) {
         return;
       }
-      // Create a lobby
-      const roomID = this.idManager.generateCode();
-      const room = new Lobby(roomID);
-      console.log("Lobby created:", roomID);
-
-      this.rooms.set(roomID, room);
-      this.sockets.set(socket.id, room.id);
-      room.onJoin(action.payload.name, socket, this.io);
-    } else if (action.type === clientJoinLobby) {
-      // Protect against double join
-      if (this.sockets.get(socket.id)) return;
-      const room = this.rooms.get(action.payload.roomID);
-      if (!room) {
-        socket.emit(
-          "action",
-          actionFromServer({ type: "error", error: "Invalid room code" })
-        );
-        return;
-      }
-      this.sockets.set(socket.id, room.id);
-      room.onJoin(action.payload.name, socket, this.io);
+      // Add to queue
+      this.queueManager.addToQueue(socket);
+    } else if (action.type === clientLeaveQueue) {
+      // Remove from queue
+      this.queueManager.removeFromQueue(socket.id);
+      socket.emit("action", actionFromServer(LobbyAction.reset()));
     } else if (action.type === clientLeaveLobby) {
       const roomID = this.sockets.get(socket.id);
       if (!roomID) return;

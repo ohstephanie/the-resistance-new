@@ -7,4 +7,7 @@ export type LobbyState = {
   names: string[];
   gameInitOptions: GameMode | GameCustomRoleOptions;
   inGame: boolean;
+  inQueue: boolean;
+  queuePosition: number;
+  playerName: string;
 };

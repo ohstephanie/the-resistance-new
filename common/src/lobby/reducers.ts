@@ -8,6 +8,7 @@ import {
   reset,
   updateGameOptions,
   updateGameState,
+  updateQueueState,
 } from "./actions";
 
 const initialState: LobbyState = {
@@ -16,6 +17,9 @@ const initialState: LobbyState = {
   memberIDs: [],
   names: [],
   gameInitOptions: "normal",
+  inQueue: false,
+  queuePosition: 0,
+  playerName: "",
 };
 
 export const LobbyReducer = createReducer(initialState, (builder) => {
@@ -30,6 +34,9 @@ export const LobbyReducer = createReducer(initialState, (builder) => {
         memberIDs: [],
         names: [],
         gameInitOptions: "normal",
+        inQueue: false,
+        queuePosition: 0,
+        playerName: "",
       };
     })
     .addCase(reset, (state, action) => {
@@ -53,5 +60,10 @@ export const LobbyReducer = createReducer(initialState, (builder) => {
     })
     .addCase(updateGameState, (state, action) => {
       state.inGame = action.payload.inGame;
+    })
+    .addCase(updateQueueState, (state, action) => {
+      state.inQueue = action.payload.inQueue;
+      state.queuePosition = action.payload.queuePosition;
+      state.playerName = action.payload.name;
     });
 });
