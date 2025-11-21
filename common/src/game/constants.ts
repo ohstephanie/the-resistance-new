@@ -116,6 +116,38 @@ export const TeamPoolsAssassins: { [n: number]: Role[] } = {
   ],
 };
 
+export const TeamPoolsAvalonEasy: { [n: number]: Role[] } = {
+  5: ["merlin", "percival", "loyal_servant", "assassin", "morgana"],
+};
+
+export const TeamPoolsAvalonMedium: { [n: number]: Role[] } = {
+  // 7 players: Merlin, Percival, 2 Servants (4 good), Assassin, Morgana, Mordred (3 evil)
+  7: [
+    "merlin",
+    "percival",
+    "loyal_servant",
+    "loyal_servant",
+    "assassin",
+    "morgana",
+    "mordred",
+  ],
+};
+
+export const TeamPoolsAvalonHard: { [n: number]: Role[] } = {
+  // 9 players: Merlin, Percival, 3 Servants (5 good), Assassin, Morgana, Mordred, Oberon (4 evil)
+  9: [
+    "merlin",
+    "percival",
+    "loyal_servant",
+    "loyal_servant",
+    "loyal_servant",
+    "assassin",
+    "morgana",
+    "mordred",
+    "oberon",
+  ],
+};
+
 export const GameMinPlayers = 5;
 export const GameMaxPlayers = 10;
 
@@ -128,6 +160,13 @@ export const GameRolesOrder: Role[] = [
   "intern",
   "imposter",
   "mole",
+  // Avalon
+  "merlin",
+  "percival",
+  "loyal_servant",
+  "morgana",
+  "mordred",
+  "oberon",
 ];
 export const GameAgentRoles: Role[] = ["agent", "captain", "deputy"];
 export const GameRolesDisplay: Map<Role, string> = new Map([
@@ -139,4 +178,11 @@ export const GameRolesDisplay: Map<Role, string> = new Map([
   ["intern", "Intern"],
   ["imposter", "Imposter"],
   ["mole", "Mole"],
+  // Avalon roles
+  ["merlin", "Merlin"],
+  ["percival", "Percival"],
+  ["loyal_servant", "Loyal Servant"],
+  ["morgana", "Morgana"],
+  ["mordred", "Mordred"],
+  ["oberon", "Oberon"],
 ]);

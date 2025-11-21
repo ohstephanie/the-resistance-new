@@ -16,6 +16,12 @@ export default function GameInfoBox() {
       ? "Normal"
       : gameOptions === "assassins"
       ? "Assassins"
+      : gameOptions === "avalon_easy"
+      ? "Avalon – Easy"
+      : gameOptions === "avalon_medium"
+      ? "Avalon – Medium"
+      : gameOptions === "avalon_hard"
+      ? "Avalon – Hard"
       : "Custom";
 
   return (

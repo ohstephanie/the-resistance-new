@@ -24,7 +24,7 @@ export type Color =
   | "purple"
   | "pink";
 
-export type GameMode = "normal" | "assassins";
+export type GameMode = "normal" | "assassins" | "avalon_easy" | "avalon_medium" | "avalon_hard";
 export type GamePhase =
   | "role-reveal"
   | "team-building"
@@ -69,7 +69,14 @@ export type Role =
   | "assassin"
   | "imposter"
   | "mole"
-  | "intern";
+  | "intern"
+  // Avalon roles
+  | "merlin"
+  | "percival"
+  | "loyal_servant"
+  | "morgana"
+  | "mordred"
+  | "oberon";
 // --- Team Agent ---
 // Agent knows noone
 // Captain knows who spies are

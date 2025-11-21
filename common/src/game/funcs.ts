@@ -9,6 +9,9 @@ import {
   MissionPlayerCount,
   TeamPoolsAssassins,
   TeamPoolsNormal,
+  TeamPoolsAvalonEasy,
+  TeamPoolsAvalonMedium,
+  TeamPoolsAvalonHard,
 } from "./constants";
 import {
   ChatMessage,
@@ -22,6 +25,7 @@ import {
   Team,
   Mission,
   Color,
+  GameMode,
 } from "./types";
 
 export const GameFunc = {
@@ -409,14 +413,20 @@ export const GameFunc = {
     // Return the result of a role list
     getRoleList(
       numPlayers: number,
-      options: "normal" | "assassins" | GameCustomRoleOptions
+      options: GameMode | GameCustomRoleOptions
     ): Role[] | null {
       if (options === "normal") {
         return TeamPoolsNormal[numPlayers].slice();
       } else if (options === "assassins") {
         return TeamPoolsAssassins[numPlayers].slice();
+      } else if (options === "avalon_easy") {
+        return TeamPoolsAvalonEasy[numPlayers]?.slice() ?? null;
+      } else if (options === "avalon_medium") {
+        return TeamPoolsAvalonMedium[numPlayers]?.slice() ?? null;
+      } else if (options === "avalon_hard") {
+        return TeamPoolsAvalonHard[numPlayers]?.slice() ?? null;
       } else {
-        return this.getCustomRoleList(numPlayers, options);
+        return this.getCustomRoleList(numPlayers, options as GameCustomRoleOptions);
       }
     },
 
@@ -461,6 +471,48 @@ export const GameFunc = {
       const playerRole = roleList[playerIndex];
       let known = new Map<number, Role[]>();
       known.set(playerIndex, [roleList[playerIndex]]);
+
+      const isAvalon = roleList.some((r) => [
+        "merlin",
+        "percival",
+        "loyal_servant",
+        "morgana",
+        "mordred",
+        "oberon",
+      ].includes(r));
+
+      if (isAvalon) {
+        if (playerRole === "merlin") {
+          for (let i = 0; i < roleList.length; i++) {
+            if (i === playerIndex) continue;
+            if (["assassin", "morgana", "oberon"].includes(roleList[i])) {
+              known.set(i, [roleList[i]]);
+            }
+            // Mordred is hidden from Merlin
+          }
+        } else if (playerRole === "percival") {
+          const mark = ["merlin", "morgana"] as Role[];
+          for (let i = 0; i < roleList.length; i++) {
+            if (i === playerIndex) continue;
+            if (roleList[i] === "merlin" || roleList[i] === "morgana") {
+              known.set(i, mark.slice());
+            }
+          }
+        } else if (["assassin", "morgana", "mordred"].includes(playerRole)) {
+          // Evil know each other except Oberon
+          for (let i = 0; i < roleList.length; i++) {
+            if (i === playerIndex) continue;
+            const r = roleList[i];
+            if (["assassin", "morgana", "mordred"].includes(r)) {
+              known.set(i, [r]);
+            }
+          }
+          // Oberon is hidden to and from evil
+        } else if (playerRole === "oberon") {
+          // Oberon knows only themselves
+        }
+        return known;
+      }
 
       if (playerRole === "captain") {
         for (let i = 0; i < roleList.length; i++) {
@@ -541,6 +593,13 @@ export const GameFunc = {
       if (winner === null || winner === "spy") {
         return winner;
       } else if (winner === "agent") {
+        const hasMerlin = state.player.roles.includes("merlin");
+        if (hasMerlin) {
+          if (!state.player.roles.includes("assassin")) return "agent";
+          if (state.assassinChoice === null) return "agent";
+          const assassinated = state.player.roles[state.assassinChoice];
+          return assassinated === "merlin" ? "spy" : "agent";
+        }
         if (!state.player.roles.includes("assassin")) return "agent";
         if (state.assassinChoice === null) return "agent";
         const assassinated = state.player.roles[state.assassinChoice];
@@ -550,7 +609,7 @@ export const GameFunc = {
           return "agent";
         }
       }
-      throw "up"; // How did you even get here
+      throw "up";
     },
     // Returns whether or not the last 5 team proposals were failed
     getIsHammer(state: GameState): boolean {

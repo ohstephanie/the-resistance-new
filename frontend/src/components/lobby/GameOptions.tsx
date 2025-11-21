@@ -50,6 +50,12 @@ export default function GameOptions() {
         ? "normal"
         : e.target.value === "assassins"
         ? "assassins"
+        : e.target.value === "avalon_easy"
+        ? "avalon_easy"
+        : e.target.value === "avalon_medium"
+        ? "avalon_medium"
+        : e.target.value === "avalon_hard"
+        ? "avalon_hard"
         : {
             captain: false,
             deputy: false,
@@ -79,9 +85,12 @@ export default function GameOptions() {
               disabled={!host}
               onChange={handleSetGameMode}
             >
-              <option value="normal">Normal</option>
-              <option value="assassins">Assassins</option>
-              <option value="custom">Custom</option>
+              <option value="avalon_easy">Avalon – Easy (5 players)</option>
+              <option value="avalon_medium">Avalon – Medium (7 players)</option>
+              <option value="avalon_hard">Avalon – Hard (9 players)</option>
+              <option value="normal">Resistance – Normal</option>
+              {/* <option value="assassins">Resistance – Assassins</option> */}
+              {/* <option value="custom">Custom</option> */}
             </Form.Control>
           </Form.Group>
 

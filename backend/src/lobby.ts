@@ -51,6 +51,13 @@ export class Lobby {
     const clientStartGame = LobbyAction.clientStartGame.type;
     const clientLeaveGame = LobbyAction.clientLeaveGame.type;
     const clientRejoinGame = LobbyAction.clientRejoinGame.type;
+    
+    // Route game actions to AI agents
+    if (action.type.startsWith('game/') && this.game) {
+      const gameState = this.game.store.getState();
+      // AI agents will handle actions in their handleAction method
+    }
+    
     if (action.type === clientStartGame) {
       // Safeguard
       if (this.game !== null) {
@@ -70,12 +77,17 @@ export class Lobby {
         gamemode: this.store.getState().gameInitOptions,
       };
       this.game = new Game(gameOptions, this.id);
+      
+      // Set up AI agent router for this game
+      this.setupAIAgentRouter(io);
 
       // Get everyone to join game
-      const hydrateGameStateAction = GameAction.hydrate(
-        this.game.store.getState()
-      );
+      const gameState = this.game.store.getState();
+      const hydrateGameStateAction = GameAction.hydrate(gameState);
       io.to(this.id).emit("action", actionFromServer(hydrateGameStateAction));
+      
+      // Initialize AI agents when game starts
+      this.initializeAIAgents(gameState, io);
 
       const updateGameStateAction = LobbyAction.updateGameState({
         inGame: true,
@@ -132,6 +144,38 @@ export class Lobby {
       io.to(this.id).emit("action", actionFromServer(updateGameStateAction));
     }
   }
+  
+  private initializeAIAgents(gameState: GameState, io: Server): void {
+    // Initialize AI agents when game starts
+    // This is handled by the Server class via the router
+  }
+  
+  private setupAIAgentRouter(io: Server): void {
+    if (!this.game) return;
+    
+    // Create router function that routes actions to all AI agents in this game
+    const router = (action: AnyAction, gameState: GameState) => {
+      // Only route game actions (not lobby actions)
+      if (!action.type.startsWith('game/')) return;
+      
+      // Route to all AI agent sockets in this game
+      gameState.player.socketIDs.forEach((socketId, playerIndex) => {
+        if (socketId && socketId.startsWith('ai_')) {
+          // Access server's AI agent manager through io
+          const server = (io as any).serverInstance;
+          if (server && server.useLLMAgents && server.aiAgentManager) {
+            // Only log chat messages to reduce noise
+            if (action.type === 'game/new-player-chat-message') {
+              console.log(`[AI Router] Routing chat message to AI agent ${socketId} (player ${playerIndex})`);
+            }
+            server.aiAgentManager.routeActionToAgent(socketId, action, gameState);
+          }
+        }
+      });
+    };
+    
+    this.game.setAIAgentRouter(router);
+  }
 }
 
 type GameStore = Store<GameState>;
@@ -140,6 +184,8 @@ export class Game {
   roomID: string;
   timeout: NodeJS.Timeout | null;
   store: GameStore;
+  private routeToAIAgents: ((action: AnyAction, gameState: GameState) => void) | null = null;
+  
   constructor(options: GameInitOptions, roomID: string) {
     this.roomID = roomID;
     this.store = configureStore({
@@ -148,6 +194,11 @@ export class Game {
     this.store.dispatch(GameAction.initialize(options));
     this.timeout = null;
   }
+  
+  setAIAgentRouter(router: (action: AnyAction, gameState: GameState) => void) {
+    this.routeToAIAgents = router;
+  }
+  
   start(io: Server) {
     if (!this.timeout) {
       this.timeout = setInterval(() => this.tick(io), 1000);
@@ -161,14 +212,27 @@ export class Game {
   tick(io: Server) {
     const tickAction = GameAction.tick();
     this.store.dispatch(tickAction);
+    const gameState = this.store.getState();
     io.to(this.roomID).emit("action", actionFromServer(tickAction));
-    if (this.store.getState().game.phase === "finished") {
+    
+    // Route tick action to all AI agents
+    if (this.routeToAIAgents) {
+      this.routeToAIAgents(tickAction, gameState);
+    }
+    
+    if (gameState.game.phase === "finished") {
       this.stop();
     }
   }
   onAction(action: AnyAction, socket: Socket, io: Server) {
     this.store.dispatch(action);
+    const gameState = this.store.getState();
     io.to(this.roomID).emit("action", actionFromServer(action));
+    
+    // Route action to all AI agents in this room
+    if (this.routeToAIAgents) {
+      this.routeToAIAgents(action, gameState);
+    }
   }
   onRejoin(socketID: string, name: string, index: number, io: Server) {
     const playerRejoinAction = GameAction.playerReconnect({

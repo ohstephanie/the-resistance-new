@@ -28,6 +28,13 @@ export const textureMap = {
     imposter: [5, 1],
     mole: [0, 2],
     intern: [1, 2],
+    // Avalon roles mapped to closest existing icons
+    merlin: [0, 1], // agent icon
+    percival: [0, 1], // agent icon
+    loyal_servant: [0, 1], // agent icon
+    morgana: [3, 1], // spy icon
+    mordred: [3, 1], // spy icon
+    oberon: [3, 1], // spy icon
   },
   stickman: {
     red: [2, 2],

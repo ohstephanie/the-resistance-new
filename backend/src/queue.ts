@@ -15,7 +15,7 @@ const ANIMAL_NAMES = [
 ];
 
 export class QueueManager {
-  private queue: Array<{ socket: Socket; name: string; socketId: string }>;
+  private queue: Array<{ socket: Socket; name: string; socketId: string; isAI?: boolean }>;
   public rooms: Map<string, Lobby>;
   private idManager: RoomCodeManager;
   private io: socketIO.Server;
@@ -34,19 +34,22 @@ export class QueueManager {
     return ANIMAL_NAMES[randomIndex];
   }
 
-  addToQueue(socket: Socket) {
+  addToQueue(socket: Socket, isAI: boolean = false) {
     const name = this.generateRandomName();
-    const queueEntry = { socket, name, socketId: socket.id };
+    const queueEntry = { socket, name, socketId: socket.id, isAI };
     
     this.queue.push(queueEntry);
-    console.log(`Player ${name} joined queue. Queue size: ${this.queue.length}`);
+    const aiLabel = isAI ? " (AI)" : "";
+    console.log(`Player ${name}${aiLabel} joined queue. Queue size: ${this.queue.length}`);
     
-    // Notify the player they're in queue
-    socket.emit("action", actionFromServer(LobbyAction.updateQueueState({ 
-      inQueue: true, 
-      queuePosition: this.queue.length,
-      name 
-    })));
+    // Notify the player they're in queue (only if not AI)
+    if (!isAI) {
+      socket.emit("action", actionFromServer(LobbyAction.updateQueueState({ 
+        inQueue: true, 
+        queuePosition: this.queue.length,
+        name 
+      })));
+    }
 
     // Check if we have enough players to start a game
     this.checkAndStartGame();
@@ -75,11 +78,23 @@ export class QueueManager {
 
   private checkAndStartGame() {
     if (this.queue.length >= GameMinPlayers) {
+      // Check if there's at least one human player (not AI)
+      const hasHumanPlayer = this.queue.some(entry => !entry.isAI);
+      
+      // Only create lobby if there's at least one human player
+      // This prevents AI-only lobbies from being created
+      if (!hasHumanPlayer) {
+        console.log(`Queue has ${this.queue.length} AI players, waiting for human player to join...`);
+        return;
+      }
+      
       // Take up to GameMaxPlayers from the queue
       const playersToStart = Math.min(this.queue.length, GameMaxPlayers);
       const playersForGame = this.queue.splice(0, playersToStart);
       
-      console.log(`Starting game with ${playersForGame.length} players`);
+      const aiCount = playersForGame.filter(p => p.isAI).length;
+      const humanCount = playersForGame.length - aiCount;
+      console.log(`Starting game with ${playersForGame.length} players (${humanCount} human, ${aiCount} AI)`);
       
       // Create a new lobby/game
       const roomID = this.idManager.generateCode();
@@ -98,10 +113,7 @@ export class QueueManager {
       // Update queue positions for remaining players
       this.updateQueuePositions();
       
-      // Auto-start the game
-      setTimeout(() => {
-        this.startGame(roomID);
-      }, 2000); // Give players 2 seconds to see they're in a game
+      // Do not auto-start; the host will start the game from the lobby UI
     }
   }
 
