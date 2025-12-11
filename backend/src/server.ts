@@ -147,8 +147,13 @@ export class Server {
       if (this.sockets.get(socket.id)) {
         return;
       }
-      // Add to queue
-      this.queueManager.addToQueue(socket);
+      // Add to queue with difficulty
+      const difficulty = (action as any).payload?.difficulty;
+      if (!difficulty || !["easy", "medium", "hard"].includes(difficulty)) {
+        console.error("Invalid or missing difficulty in clientJoinQueue action");
+        return;
+      }
+      this.queueManager.addToQueue(socket, difficulty);
     } else if (action.type === clientLeaveQueue) {
       // Remove from queue
       this.queueManager.removeFromQueue(socket.id);
@@ -190,7 +195,7 @@ export class Server {
   }
   
   // Method to create AI agent and add to queue
-  async createAIAgent(): Promise<Socket | null> {
+  async createAIAgent(difficulty: "easy" | "medium" | "hard" = "easy"): Promise<Socket | null> {
     if (!this.useLLMAgents || !this.aiAgentManager) {
       return null;
     }
@@ -240,7 +245,7 @@ export class Server {
       
       // Add to queue (mark as AI)
       this.sockets.set(socketId, null);
-      this.queueManager.addToQueue(mockSocket, true); // true = isAI
+      this.queueManager.addToQueue(mockSocket, difficulty, true); // difficulty, isAI
       
       // Create AI agent with temporary player index (will be updated when game starts)
       const tempPlayerIndex = -1;

@@ -15,7 +15,6 @@ export default function MembersList() {
         {names.map((n, i) => (
           <span key={i} className={s.name}>
             {n}
-            {i === 0 ? " (Host)" : ""}
           </span>
         ))}
       </div>

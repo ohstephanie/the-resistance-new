@@ -122,6 +122,7 @@ export const TeamPoolsAvalonEasy: { [n: number]: Role[] } = {
 
 export const TeamPoolsAvalonMedium: { [n: number]: Role[] } = {
   // 7 players: Merlin, Percival, 2 Servants (4 good), Assassin, Morgana, Mordred (3 evil)
+  // Note: User description says 5 good + 3 evil, but that totals 8. Using 4 good + 3 evil = 7 to match "Player Count: 7"
   7: [
     "merlin",
     "percival",

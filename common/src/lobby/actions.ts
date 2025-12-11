@@ -22,7 +22,7 @@ export const clientJoinLobby = createAction<{ name: string; roomID: string }>(
 );
 
 // Tell the server that you'd like to join the queue
-export const clientJoinQueue = createAction("lobby/client-join-queue");
+export const clientJoinQueue = createAction<{ difficulty: "easy" | "medium" | "hard" }>("lobby/client-join-queue");
 
 // Tell the server that you'd like to leave the queue
 export const clientLeaveQueue = createAction("lobby/client-leave-queue");

@@ -1,5 +1,5 @@
 import { LobbyAction } from "common-modules";
-import { Button, Form, InputGroup } from "react-bootstrap";
+import { Button } from "react-bootstrap";
 import Col from "react-bootstrap/esm/Col";
 import Container from "react-bootstrap/esm/Container";
 import Row from "react-bootstrap/esm/Row";
@@ -30,13 +30,6 @@ export default function LobbyView() {
           </Col>
           <Col xs={0} md={2} lg={3} />
         </Row>
-        <Row>
-          <Col xs={0} md={2} lg={3} />
-          <Col xs={12} md={8} lg={6}>
-            <LobbyCopyURL />
-          </Col>
-          <Col xs={0} md={2} lg={3} />
-        </Row>
       </Container>
 
       <div className={s.back}>
@@ -52,26 +45,5 @@ export default function LobbyView() {
         </ButtonLink>
       </div>
     </div>
-  );
-}
-
-function LobbyCopyURL() {
-  const roomCode = useSelector(LobbySelector.lobbyID);
-  const url = new URL(window.location.href);
-  url.searchParams.set("join", roomCode);
-  return (
-    <InputGroup size="sm" className={s.LobyCopyURL}>
-      <Form.Control
-        readOnly
-        value={url.toString()}
-        onClick={(e) => (e.target as HTMLInputElement).select()}
-      />
-      <Button
-        variant="outline-light"
-        onClick={() => navigator.clipboard.writeText(url.toString())}
-      >
-        Copy
-      </Button>
-    </InputGroup>
   );
 }

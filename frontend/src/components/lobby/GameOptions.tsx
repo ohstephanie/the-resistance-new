@@ -21,7 +21,6 @@ import s from "./GameOptions.module.scss";
 export default function GameOptions() {
   const dispatch = useDispatch();
   const lobbyMembers = useSelector(LobbySelector.lobbyMembers);
-  const host = useSelector(LobbySelector.lobbyIsHost);
   const gameOptions = useSelector(LobbySelector.lobbyGameOptions);
   const gamemode = typeof gameOptions === "object" ? "custom" : gameOptions;
   const gameRoleOptions = gameOptions as GameCustomRoleOptions;
@@ -82,7 +81,7 @@ export default function GameOptions() {
               className={s.select}
               as="select"
               value={gamemode}
-              disabled={!host}
+              disabled={true}
               onChange={handleSetGameMode}
             >
               <option value="avalon_easy">Avalon – Easy (5 players)</option>
@@ -92,11 +91,14 @@ export default function GameOptions() {
               {/* <option value="assassins">Resistance – Assassins</option> */}
               {/* <option value="custom">Custom</option> */}
             </Form.Control>
+            <Form.Text className="text-muted">
+              Game mode is set based on the queue difficulty you selected.
+            </Form.Text>
           </Form.Group>
 
           {gamemode === "custom" && (
             <CustomRolesSelection
-              readOnly={!host}
+              readOnly={true}
               roles={gameRoleOptions}
               onToggle={handleToggleGameOption}
             />
@@ -104,12 +106,12 @@ export default function GameOptions() {
           {rolesList && <RolesList roles={rolesList} />}
           <Button
             className={s.startButton}
-            disabled={!host || !enoughPlayers}
+            disabled={!enoughPlayers}
             onClick={handleStartGame}
           >
             Start Game
           </Button>
-          {!enoughPlayers && <span>5-10 players can play The Resistance</span>}
+          {!enoughPlayers && <span>Waiting for more players to join...</span>}
         </div>
       </div>
     </>
