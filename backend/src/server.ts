@@ -5,6 +5,7 @@ import { Lobby } from "./lobby";
 import { QueueManager } from "./queue";
 import { actionFromServer, RoomCodeManager } from "./util";
 import { AIAgentManager, AgentConfig } from "./aiAgentManager";
+import { GameDatabase } from "./database";
 
 export class Server {
   io: socketIO.Server;
@@ -13,13 +14,15 @@ export class Server {
   queueManager: QueueManager;
   aiAgentManager: AIAgentManager | null = null;
   useLLMAgents: boolean = false;
+  database: GameDatabase;
   
   constructor(io: socketIO.Server) {
     this.io = io;
     this.io.on("connection", this.onConnection.bind(this));
     this.sockets = new Map();
     this.idManager = new RoomCodeManager();
-    this.queueManager = new QueueManager(io, this.sockets);
+    this.database = new GameDatabase();
+    this.queueManager = new QueueManager(io, this.sockets, this.database);
     
     // Initialize AI agents if enabled
     this.initializeLLMAgents();

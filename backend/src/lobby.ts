@@ -12,22 +12,25 @@ import {
 } from "common-modules";
 import { Server, Socket } from "socket.io";
 import { actionFromServer } from "./util";
+import { GameDatabase } from "./database";
 
 type LobbyStore = Store<LobbyState>;
 
 export class Lobby {
   store: LobbyStore;
   game: Game | null;
+  database: GameDatabase;
   get id() {
     return this.store.getState().id;
   }
 
-  constructor(id: string) {
+  constructor(id: string, database: GameDatabase) {
     this.store = configureStore({
       reducer: LobbyReducer,
     });
     this.store.dispatch(LobbyAction.initialize({ id }));
     this.game = null;
+    this.database = database;
   }
   onJoin(name: string, socket: Socket, io: Server) {
     const memberJoinAction = LobbyAction.memberJoin({
@@ -76,7 +79,24 @@ export class Lobby {
         seed: new Date().getTime() % 10_000,
         gamemode: this.store.getState().gameInitOptions,
       };
-      this.game = new Game(gameOptions, this.id);
+      this.game = new Game(gameOptions, this.id, this.database);
+      
+      // Save game start to database
+      const gameInitOptions = this.store.getState().gameInitOptions;
+      const gameMode = typeof gameInitOptions === "string" 
+        ? gameInitOptions 
+        : "custom";
+      const difficulty = typeof gameMode === "string" && gameMode.startsWith("avalon_") 
+        ? gameMode.replace("avalon_", "") as "easy" | "medium" | "hard"
+        : null;
+      const initialGameState = this.game.store.getState();
+      this.database.startGame(
+        this.id,
+        gameMode,
+        difficulty,
+        initialGameState.player.names,
+        initialGameState.player.roles
+      );
       
       // Set up AI agent router for this game
       this.setupAIAgentRouter(io);
@@ -184,10 +204,15 @@ export class Game {
   roomID: string;
   timeout: NodeJS.Timeout | null;
   store: GameStore;
+  database: GameDatabase;
   private routeToAIAgents: ((action: AnyAction, gameState: GameState) => void) | null = null;
+  private lastChatLength: number = 0;
+  private lastTeamHistoryLength: number = 0;
+  private lastMissionHistoryLength: number = 0;
   
-  constructor(options: GameInitOptions, roomID: string) {
+  constructor(options: GameInitOptions, roomID: string, database: GameDatabase) {
     this.roomID = roomID;
+    this.database = database;
     this.store = configureStore({
       reducer: GameReducer,
     });
@@ -215,6 +240,9 @@ export class Game {
     const gameState = this.store.getState();
     io.to(this.roomID).emit("action", actionFromServer(tickAction));
     
+    // Save game state changes
+    this.saveGameStateChanges(gameState);
+    
     // Route tick action to all AI agents
     if (this.routeToAIAgents) {
       this.routeToAIAgents(tickAction, gameState);
@@ -222,16 +250,59 @@ export class Game {
     
     if (gameState.game.phase === "finished") {
       this.stop();
+      // Save game end
+      this.database.endGame(this.roomID, gameState.winner);
     }
   }
+  
   onAction(action: AnyAction, socket: Socket, io: Server) {
     this.store.dispatch(action);
     const gameState = this.store.getState();
     io.to(this.roomID).emit("action", actionFromServer(action));
     
+    // Save action to database
+    this.database.saveAction(this.roomID, action, gameState);
+    
+    // Save game state changes (chats, teams, missions)
+    this.saveGameStateChanges(gameState);
+    
     // Route action to all AI agents in this room
     if (this.routeToAIAgents) {
       this.routeToAIAgents(action, gameState);
+    }
+  }
+  
+  private saveGameStateChanges(gameState: GameState) {
+    // Save new chat messages
+    if (gameState.chat.length > this.lastChatLength) {
+      const newMessages = gameState.chat.slice(this.lastChatLength);
+      newMessages.forEach(msg => {
+        this.database.saveChatMessage(this.roomID, msg);
+      });
+      this.lastChatLength = gameState.chat.length;
+    }
+    
+    // Save new teams (proposals)
+    if (gameState.teamHistory.length > this.lastTeamHistoryLength) {
+      const newTeams = gameState.teamHistory.slice(this.lastTeamHistoryLength);
+      newTeams.forEach(team => {
+        // Check if team was approved (has votes)
+        const approved = team.votes.some(v => v !== "none");
+        this.database.saveTeam(this.roomID, team, approved);
+      });
+      this.lastTeamHistoryLength = gameState.teamHistory.length;
+    }
+    
+    // Save new missions
+    if (gameState.missionHistory.length > this.lastMissionHistoryLength) {
+      const newMissions = gameState.missionHistory.slice(this.lastMissionHistoryLength);
+      newMissions.forEach(mission => {
+        // Determine mission result
+        const failCount = mission.actions.filter(a => a === "fail").length;
+        const result = failCount > 0 ? "fail" : "success";
+        this.database.saveMission(this.roomID, mission, result);
+      });
+      this.lastMissionHistoryLength = gameState.missionHistory.length;
     }
   }
   onRejoin(socketID: string, name: string, index: number, io: Server) {

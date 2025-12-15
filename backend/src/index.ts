@@ -116,6 +116,57 @@ app.get("/api/ai-agents", (req, res) => {
   }
 });
 
+// Database API endpoints
+app.get("/api/games", (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 100;
+    const offset = parseInt(req.query.offset as string) || 0;
+    const games = server.database.getAllGames(limit, offset);
+    res.json(games);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Unknown error getting games" });
+  }
+});
+
+app.get("/api/games/:gameId", (req, res) => {
+  try {
+    const gameId = parseInt(req.params.gameId);
+    if (isNaN(gameId)) {
+      return res.status(400).json({ error: "Invalid game ID" });
+    }
+    const gameData = server.database.getFullGameData(gameId);
+    if (!gameData) {
+      return res.status(404).json({ error: "Game not found" });
+    }
+    res.json(gameData);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Unknown error getting game data" });
+  }
+});
+
+app.get("/api/games/room/:roomId", (req, res) => {
+  try {
+    const roomId = req.params.roomId;
+    const game = server.database.getGameByRoomId(roomId);
+    if (!game) {
+      return res.status(404).json({ error: "Game not found" });
+    }
+    const gameData = server.database.getFullGameData(game.id);
+    res.json(gameData);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Unknown error getting game data" });
+  }
+});
+
+app.get("/api/database/stats", (req, res) => {
+  try {
+    const stats = server.database.getGameStats();
+    res.json(stats);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Unknown error getting database stats" });
+  }
+});
+
 app.use(express.static(path.join(__dirname, "../../frontend/build")));
 
 app.get("*", (req, res) => {

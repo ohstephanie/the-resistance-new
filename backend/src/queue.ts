@@ -4,6 +4,7 @@ import socketIO, { Socket } from "socket.io";
 import { Lobby, Game } from "./lobby";
 import { actionFromServer, RoomCodeManager } from "./util";
 import { GameMinPlayers, GameMaxPlayers } from "common-modules";
+import { GameDatabase } from "./database";
 
 // Animal names for randomized usernames
 const ANIMAL_NAMES = [
@@ -35,8 +36,9 @@ export class QueueManager {
   private idManager: RoomCodeManager;
   private io: socketIO.Server;
   private sockets: Map<string, string | null>;
+  private database: GameDatabase;
 
-  constructor(io: socketIO.Server, sockets: Map<string, string | null>) {
+  constructor(io: socketIO.Server, sockets: Map<string, string | null>, database: GameDatabase) {
     this.queues = new Map();
     this.queues.set("easy", []);
     this.queues.set("medium", []);
@@ -45,6 +47,7 @@ export class QueueManager {
     this.idManager = new RoomCodeManager();
     this.io = io;
     this.sockets = sockets;
+    this.database = database;
   }
 
   generateRandomName(excludeNames: Set<string> = new Set()): string {
@@ -161,7 +164,7 @@ export class QueueManager {
       
       // Create a new lobby/game
       const roomID = this.idManager.generateCode();
-      const room = new Lobby(roomID);
+      const room = new Lobby(roomID, this.database);
       
       // Set the game mode based on difficulty
       const gameMode = DIFFICULTY_GAME_MODES[difficulty];
