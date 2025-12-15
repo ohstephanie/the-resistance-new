@@ -10,7 +10,10 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const readline = require('readline');
 
-const dbPath = path.join(__dirname, 'data', 'games.db');
+// Database path matches what's used in database.ts
+// From dist/ folder: ../../data/games.db
+// From backend/ folder: ../data/games.db
+const dbPath = path.join(__dirname, '..', 'data', 'games.db');
 
 // Check if database exists
 const fs = require('fs');

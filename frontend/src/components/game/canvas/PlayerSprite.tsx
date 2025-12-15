@@ -44,7 +44,9 @@ export function PlayerSprite(props: PlayerSpriteProps) {
 
   const isAssassin = useSelector(GameSelector.playerRole) === "assassin";
   const assassinChoice = useSelector(GameSelector.assassinChoice);
-  const canAssassinate = GameAgentRoles.includes(roles[index]);
+  // Check if the target is a good role (not evil) - assassin can only target good players
+  const evilRoles: Role[] = ['spy', 'assassin', 'imposter', 'mole', 'intern', 'morgana', 'mordred', 'oberon'];
+  const canAssassinate = !evilRoles.includes(roles[index]);
 
   const socketIDs = useSelector(GameSelector.socketIDs);
   const disconnected = socketIDs[index] === null;

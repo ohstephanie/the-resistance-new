@@ -220,7 +220,24 @@ export class QueueManager {
     };
     
     // Create game instance
-    room.game = new Game(gameOptions, roomID);
+    room.game = new Game(gameOptions, roomID, this.database);
+
+    // Save game start to database
+    const gameInitOptions = room.store.getState().gameInitOptions;
+    const gameMode = typeof gameInitOptions === "string" 
+      ? gameInitOptions 
+      : "custom";
+    const difficulty = typeof gameMode === "string" && gameMode.startsWith("avalon_") 
+      ? gameMode.replace("avalon_", "") as "easy" | "medium" | "hard"
+      : null;
+    const initialGameState = room.game.store.getState();
+    this.database.startGame(
+      roomID,
+      gameMode,
+      difficulty,
+      initialGameState.player.names,
+      initialGameState.player.roles
+    );
 
     // Get everyone to join game
     const hydrateGameStateAction = GameAction.hydrate(
