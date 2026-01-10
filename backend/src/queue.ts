@@ -222,6 +222,9 @@ export class QueueManager {
     // Create game instance
     room.game = new Game(gameOptions, roomID, this.database);
 
+    // Set up AI agent router for this game
+    room.setupAIAgentRouter(this.io);
+
     // Save game start to database
     const gameInitOptions = room.store.getState().gameInitOptions;
     const gameMode = typeof gameInitOptions === "string" 
@@ -244,6 +247,9 @@ export class QueueManager {
       room.game.store.getState()
     );
     this.io.to(roomID).emit("action", actionFromServer(hydrateGameStateAction));
+
+    // Initialize AI agents when game starts
+    room.initializeAIAgents(initialGameState, this.io);
 
     const updateGameStateAction = LobbyAction.updateGameState({
       inGame: true,

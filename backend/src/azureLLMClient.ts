@@ -174,7 +174,9 @@ export class AzureLLMClient {
       throw new Error(`Rate limit exceeded: ${checkResult.reason}`);
     }
     
-    const url = `${this.endpoint}/openai/deployments/${this.deploymentName}/chat/completions?api-version=${this.apiVersion}`;
+    // Ensure endpoint doesn't have trailing slash
+    const cleanEndpoint = this.endpoint.replace(/\/$/, '');
+    const url = `${cleanEndpoint}/openai/deployments/${this.deploymentName}/chat/completions?api-version=${this.apiVersion}`;
     
     const requestConfig = {
       ...this.modelConfig,
@@ -244,6 +246,10 @@ export class AzureLLMClient {
           const status = axiosError.response.status;
           if (status === 401 || status === 403) {
             throw new Error(`Authentication error: ${(axiosError.response.data as any)?.error?.message || 'Invalid API key'}`);
+          }
+          if (status === 404) {
+            const errorMsg = (axiosError.response.data as any)?.error?.message || 'Not found';
+            throw new Error(`Azure endpoint not found (404): ${errorMsg}. Check your AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT_NAME. URL: ${url}`);
           }
           if (status === 429) {
             await this.sleep(this.retryDelay * (attempt + 1) * 2);

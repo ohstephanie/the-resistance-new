@@ -165,12 +165,23 @@ export class Lobby {
     }
   }
   
-  private initializeAIAgents(gameState: GameState, io: Server): void {
+  initializeAIAgents(gameState: GameState, io: Server): void {
     // Initialize AI agents when game starts
-    // This is handled by the Server class via the router
+    // The router will handle initialization when actions are routed
+    // But we can trigger it by routing a hydrate action
+    const server = (io as any).serverInstance;
+    if (server && server.useLLMAgents && server.aiAgentManager && this.game) {
+      // Route hydrate action to initialize all AI agents
+      const hydrateAction = { type: 'game/hydrate', payload: gameState };
+      gameState.player.socketIDs.forEach((socketId) => {
+        if (socketId && socketId.startsWith('ai_')) {
+          server.aiAgentManager.routeActionToAgent(socketId, hydrateAction as any, gameState);
+        }
+      });
+    }
   }
   
-  private setupAIAgentRouter(io: Server): void {
+  setupAIAgentRouter(io: Server): void {
     if (!this.game) return;
     
     // Create router function that routes actions to all AI agents in this game

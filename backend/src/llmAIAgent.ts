@@ -152,14 +152,10 @@ export class LLMAIAgent {
         // Increase probability of responding to direct mentions
         const message = (payload.message || '').toLowerCase();
         const mentionsName = this.playerName && message.includes(this.playerName.toLowerCase());
-        const mentionsParrot = message.includes('parrot');
-        const responseProb = mentionsName || mentionsParrot ? 0.9 : this.chatProbability;
-        
-        this.logger(`[${this.playerName}] Response probability: ${responseProb} (mentionsName: ${mentionsName}, mentionsParrot: ${mentionsParrot})`);
+        const responseProb = mentionsName ? 0.9 : this.chatProbability;
         
         // Decide if we should respond
         const shouldRespond = Math.random() < responseProb;
-        this.logger(`[${this.playerName}] Should respond: ${shouldRespond}`);
         
         if (shouldRespond) {
           await this.sleep(this.responseDelay + Math.random() * 1000);
