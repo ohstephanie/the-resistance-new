@@ -56,6 +56,20 @@ export const newPlayerChatMessage = createAction<{
   message: string;
 }>("game/new-player-chat-message");
 
+// Turn-based Speaking System
+export const startSpeakingTurn = createAction<{
+  turnOrder?: number[]; // Optional: if not provided, uses round-robin from current speaker or 0
+}>("game/start-speaking-turn");
+
+export const endSpeakingTurn = createAction("game/end-speaking-turn");
+
+export const passSpeakingTurn = createAction("game/pass-speaking-turn");
+
+export const autoSendChatMessage = createAction<{
+  player: number;
+  message: string;
+}>("game/auto-send-chat-message");
+
 // export const newSystemChatMessage = createAction<{
 //   message: string;
 // }>("game/new-system-chat-message");

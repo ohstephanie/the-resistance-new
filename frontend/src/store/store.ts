@@ -225,6 +225,7 @@ const MOCK_STATE: { lobby: LobbyState; game: GameState; client: ClientState } =
         { type: "player", content: "wut", player: 2 },
       ],
       statusMessage: "Guys, {{name:1}} is {{role:captain}}",
+      speakingTurn: null,
     },
   };
 const ignoreActionMiddleware: Middleware = (_) => (_) => (_) => {};

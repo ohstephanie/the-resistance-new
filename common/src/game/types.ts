@@ -88,6 +88,13 @@ export type Role =
 // Mole is unknown to Captain
 // Intern is unknown to other spies
 
+export type SpeakingTurn = {
+  currentSpeaker: number;
+  timeRemaining: number; // in seconds (10 seconds per turn)
+  turnOrder: number[]; // deterministic order of players
+  turnIndex: number; // current index in turnOrder
+};
+
 export type GameState = {
   player: {
     names: string[];
@@ -109,4 +116,6 @@ export type GameState = {
   missionHistory: Mission[];
   chat: ChatMessage[];
   statusMessage: string | null;
+  // Turn-based speaking system
+  speakingTurn: SpeakingTurn | null;
 };

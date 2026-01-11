@@ -1,5 +1,4 @@
 import { LobbyAction } from "common-modules";
-import { Button } from "react-bootstrap";
 import Col from "react-bootstrap/esm/Col";
 import Container from "react-bootstrap/esm/Container";
 import Row from "react-bootstrap/esm/Row";

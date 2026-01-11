@@ -17,6 +17,7 @@ const mission = (state: RootState) => state.game.mission;
 const missionHistory = (state: RootState) => state.game.missionHistory;
 const assassinChoice = (state: RootState) => state.game.assassinChoice;
 const winner = (state: RootState) => state.game.winner;
+const speakingTurn = (state: RootState) => state.game.speakingTurn;
 
 const numPlayers = createSelector(socketIDs, (socketIDs) => socketIDs.length);
 const playerIndex = createSelector(
@@ -34,11 +35,19 @@ const playerRole = createSelector(
   (playerIndex, roles) => roles[playerIndex]
 );
 
+const isMyTurn = createSelector(
+  playerIndex,
+  speakingTurn,
+  (playerIndex, speakingTurn) => 
+    speakingTurn !== null && speakingTurn.currentSpeaker === playerIndex
+);
+
 export const GameSelector = {
   assassinChoice,
   chatMessages,
   gamePhase,
   gamePhaseCountdown,
+  isMyTurn,
   mission,
   missionHistory,
   missionNum,
@@ -48,6 +57,7 @@ export const GameSelector = {
   playerRole,
   roles,
   socketIDs,
+  speakingTurn,
   statusMessage,
   team,
   teamHistory,

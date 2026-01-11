@@ -71,9 +71,22 @@ export const GameFunc = {
       chat: [],
       statusMessage: "Welcome to The Resistance",
       assassinChoice: null,
+      speakingTurn: null,
     };
   },
   tick(state: GameState): GameState {
+    // Handle speaking turn countdown
+    if (state.speakingTurn && state.speakingTurn.timeRemaining > 0) {
+      state.speakingTurn.timeRemaining--;
+      
+      // Auto-send on timeout (if player has typed something, it will be sent via autoSendChatMessage action)
+      // For now, we just end the turn if time runs out
+      if (state.speakingTurn.timeRemaining === 0) {
+        // Time expired - end turn (frontend will handle auto-sending any typed text)
+        return GameFunc.action.endSpeakingTurn(state);
+      }
+    }
+    
     if (state.game.phaseCountdown > 0) {
       if (state.game.phase !== "finished") {
         state.game.phaseCountdown--;
@@ -153,11 +166,20 @@ export const GameFunc = {
 
       // Status
       state.statusMessage = `{{name:${nextLeader}}} is proposing a team`;
+      
+      // Start turn-based speaking system (round-robin order)
+      if (!state.speakingTurn) {
+        state = GameFunc.action.startSpeakingTurn(state);
+      }
+      
       return state;
     },
     teamBuildingReview(state: GameState): GameState {
       state.game.phase = "team-building-review";
       state.game.phaseCountdown = GamePhaseLengths["team-building-review"];
+
+      // Stop speaking turn system when leaving team-building
+      state.speakingTurn = null;
 
       // Chat
       const leader = state.team!.leader;
@@ -208,6 +230,9 @@ export const GameFunc = {
     mission(state: GameState): GameState {
       state.game.phase = "mission";
       state.game.phaseCountdown = GamePhaseLengths["mission"];
+
+      // Stop speaking turn system when entering mission phase
+      state.speakingTurn = null;
 
       // Archive team
       const team = last(state.teamHistory)!;
@@ -260,6 +285,9 @@ export const GameFunc = {
       state.game.phase = "finished-assassinate";
       state.game.phaseCountdown = GamePhaseLengths["finished-assassinate"];
 
+      // Stop speaking turn system
+      state.speakingTurn = null;
+
       const assassin = state.player.roles.indexOf("assassin");
       let msg = `${nameStr(assassin)} is picking a player to assassinate`;
       state.statusMessage = msg;
@@ -273,6 +301,9 @@ export const GameFunc = {
     finished(state: GameState): GameState {
       state.game.phase = "finished";
       state.game.phaseCountdown = GamePhaseLengths["finished"];
+
+      // Stop speaking turn system
+      state.speakingTurn = null;
 
       state.winner = GameFunc.util.getWinner(state);
 
@@ -406,6 +437,63 @@ export const GameFunc = {
         return state;
       }
       state.chat.push(message);
+      return state;
+    },
+    // Turn-based Speaking System
+    startSpeakingTurn(state: GameState, turnOrder?: number[]): GameState {
+      const numPlayers = state.player.names.length;
+      
+      // Determine turn order: use provided order, or create round-robin from current speaker, or start from 0
+      let order: number[];
+      if (turnOrder && turnOrder.length === numPlayers) {
+        order = turnOrder;
+      } else if (state.speakingTurn) {
+        // Continue from next player in existing order
+        const currentIndex = state.speakingTurn.turnIndex;
+        const nextIndex = (currentIndex + 1) % state.speakingTurn.turnOrder.length;
+        order = state.speakingTurn.turnOrder;
+        const nextSpeaker = order[nextIndex];
+        state.speakingTurn = {
+          currentSpeaker: nextSpeaker,
+          timeRemaining: 10,
+          turnOrder: order,
+          turnIndex: nextIndex,
+        };
+        return state;
+      } else {
+        // Create round-robin order starting from 0
+        order = Array.from({ length: numPlayers }, (_, i) => i);
+      }
+      
+      // Start with first player in order
+      state.speakingTurn = {
+        currentSpeaker: order[0],
+        timeRemaining: 10,
+        turnOrder: order,
+        turnIndex: 0,
+      };
+      
+      return state;
+    },
+    endSpeakingTurn(state: GameState): GameState {
+      if (!state.speakingTurn) {
+        return state;
+      }
+      
+      const { turnOrder, turnIndex } = state.speakingTurn;
+      
+      // Move to next player (cycle continuously)
+      const nextIndex = (turnIndex + 1) % turnOrder.length;
+      const nextSpeaker = turnOrder[nextIndex];
+      
+      // Start next player's turn (cycles continuously through all players)
+      state.speakingTurn = {
+        currentSpeaker: nextSpeaker,
+        timeRemaining: 10,
+        turnOrder: turnOrder,
+        turnIndex: nextIndex,
+      };
+      
       return state;
     },
   },

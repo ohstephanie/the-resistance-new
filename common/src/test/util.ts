@@ -54,6 +54,7 @@ export function getInitializedGame(
     chat: [],
     statusMessage: "Welcome to the Resistance",
     assassinChoice: null,
+    speakingTurn: null,
   };
   const store = configureStore({
     reducer: GameReducer,

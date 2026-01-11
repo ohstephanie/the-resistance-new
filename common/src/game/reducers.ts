@@ -1,15 +1,19 @@
 import { createReducer } from "@reduxjs/toolkit";
 import {
+  autoSendChatMessage,
+  endSpeakingTurn,
   finishAssassinChoice,
   finishTeamBuilding,
   hydrate,
   initialize,
   newPlayerChatMessage,
+  passSpeakingTurn,
   passTeamBuilding,
   playerDisconnect,
   playerReconnect,
   sendMissionAction,
   sendProposalVote,
+  startSpeakingTurn,
   tick,
   updateAssassinChoice,
   updateTeamMembers,
@@ -36,6 +40,7 @@ const initialState: GameState = {
   winner: null,
   chat: [],
   assassinChoice: null,
+  speakingTurn: null,
 };
 
 export const GameReducer = createReducer(initialState, (builder) => {
@@ -98,5 +103,30 @@ export const GameReducer = createReducer(initialState, (builder) => {
         player: action.payload.player,
         content: action.payload.message,
       });
+      // End speaking turn when a message is sent
+      if (state.speakingTurn && state.speakingTurn.currentSpeaker === action.payload.player) {
+        return GameFunc.action.endSpeakingTurn(state);
+      }
+    })
+    .addCase(startSpeakingTurn, (state, action) => {
+      return GameFunc.action.startSpeakingTurn(state, action.payload.turnOrder);
+    })
+    .addCase(endSpeakingTurn, (state) => {
+      return GameFunc.action.endSpeakingTurn(state);
+    })
+    .addCase(passSpeakingTurn, (state) => {
+      return GameFunc.action.endSpeakingTurn(state);
+    })
+    .addCase(autoSendChatMessage, (state, action) => {
+      // Auto-send message and end turn
+      GameFunc.action.newChatMessage(state, {
+        type: "player",
+        player: action.payload.player,
+        content: action.payload.message,
+      });
+      if (state.speakingTurn && state.speakingTurn.currentSpeaker === action.payload.player) {
+        return GameFunc.action.endSpeakingTurn(state);
+      }
+      return state;
     });
 });

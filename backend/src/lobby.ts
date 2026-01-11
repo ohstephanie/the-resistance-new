@@ -267,19 +267,59 @@ export class Game {
   }
   
   onAction(action: AnyAction, socket: Socket, io: Server) {
-    this.store.dispatch(action);
     const gameState = this.store.getState();
+    
+    // Validate turn-based chat messages
+    if (action.type === 'game/new-player-chat-message' || action.type === 'game/auto-send-chat-message') {
+      const playerIndex = gameState.player.socketIDs.indexOf(socket.id);
+      
+      // Check if speaking turn system is active
+      if (gameState.speakingTurn) {
+        // Allow current speaker OR auto-send messages (which may arrive slightly after turn ends)
+        const isCurrentSpeaker = playerIndex === gameState.speakingTurn.currentSpeaker;
+        const isAutoSend = action.type === 'game/auto-send-chat-message';
+        
+        // For auto-send, also check if this player was the previous speaker
+        // (in case the turn just ended and message is arriving late)
+        let wasPreviousSpeaker = false;
+        if (isAutoSend && !isCurrentSpeaker) {
+          // Check if this player was speaking recently (within last turn cycle)
+          const turnOrder = gameState.speakingTurn.turnOrder;
+          const currentIndex = gameState.speakingTurn.turnIndex;
+          const previousIndex = (currentIndex - 1 + turnOrder.length) % turnOrder.length;
+          wasPreviousSpeaker = turnOrder[previousIndex] === playerIndex;
+        }
+        
+        if (!isCurrentSpeaker && !wasPreviousSpeaker) {
+          console.log(`[Game ${this.roomID}] Player ${playerIndex} tried to chat but it's not their turn (current speaker: ${gameState.speakingTurn.currentSpeaker})`);
+          return; // Reject the action
+        }
+      }
+    }
+    
+    // Validate pass speaking turn action
+    if (action.type === 'game/pass-speaking-turn') {
+      const playerIndex = gameState.player.socketIDs.indexOf(socket.id);
+      
+      if (gameState.speakingTurn && playerIndex !== gameState.speakingTurn.currentSpeaker) {
+        console.log(`[Game ${this.roomID}] Player ${playerIndex} tried to pass but it's not their turn`);
+        return; // Reject the action
+      }
+    }
+    
+    this.store.dispatch(action);
+    const newGameState = this.store.getState();
     io.to(this.roomID).emit("action", actionFromServer(action));
     
     // Save action to database
-    this.database.saveAction(this.roomID, action, gameState);
+    this.database.saveAction(this.roomID, action, newGameState);
     
     // Save game state changes (chats, teams, missions)
-    this.saveGameStateChanges(gameState);
+    this.saveGameStateChanges(newGameState);
     
     // Route action to all AI agents in this room
     if (this.routeToAIAgents) {
-      this.routeToAIAgents(action, gameState);
+      this.routeToAIAgents(action, newGameState);
     }
   }
   

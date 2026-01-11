@@ -4,7 +4,7 @@
   height: 100%;
 
   display: grid;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: auto 1fr auto;
 }
 
 .chatWrapper {
@@ -13,6 +13,8 @@
   overflow-y: scroll;
   border-left: $nav-tabs-border-width solid $nav-tabs-border-color;
   border-right: $nav-tabs-border-width solid $nav-tabs-border-color;
+  min-height: 0; // Ensure it can shrink but not disappear
+  flex: 1; // Take available space
 }
 
 .chat {
@@ -33,6 +35,39 @@
     font-size: smaller;
     text-align: center;
   }
+  &.currentSpeaker {
+    background-color: rgba(255, 255, 0, 0.1);
+    border-left: 3px solid #ffc107;
+    padding-left: 0.5rem;
+    margin-left: -0.5rem;
+    border-radius: 2px;
+  }
+}
+
+.turnIndicator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid $nav-tabs-border-color;
+  font-size: 0.9rem;
+}
+
+.turnLabel {
+  font-weight: 500;
+}
+
+.yourTurn {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.timer {
+  font-weight: 600;
+  color: #dc3545;
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .form {
@@ -44,4 +79,17 @@
   width: 100%;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
+  
+  &.disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.passButton,
+.sendButton {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  white-space: nowrap;
 }
