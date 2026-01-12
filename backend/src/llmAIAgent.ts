@@ -42,6 +42,7 @@ export class LLMAIAgent {
   public playerName: string;
   private socketId: string;
   private socket: Socket;
+  private lastSpeakingTurnIndex: number = -1; // Track which turn we last spoke on
   
   public role: Role | null = null;
   private team: 'agent' | 'spy' | null = null;
@@ -131,7 +132,7 @@ export class LLMAIAgent {
       return;
     }
     
-    // Handle chat messages
+    // Handle chat messages (only observe, don't respond reactively in turn-based mode)
     if (action.type === 'game/new-player-chat-message') {
       if (!this.gameState) {
         this.logger(`[${this.playerName}] Received chat message but no game state yet`);
@@ -146,24 +147,9 @@ export class LLMAIAgent {
       const payload = (action as any).payload;
       this.logger(`[${this.playerName}] Received chat message from player ${payload.player}: "${payload.message}"`);
       
-      // Chat history is already updated via updateGameState in routeActionToAgent
-      
-      if (payload.player !== this.playerIndex) {
-        // Increase probability of responding to direct mentions
-        const message = (payload.message || '').toLowerCase();
-        const mentionsName = this.playerName && message.includes(this.playerName.toLowerCase());
-        const responseProb = mentionsName ? 0.9 : this.chatProbability;
-        
-        // Decide if we should respond
-        const shouldRespond = Math.random() < responseProb;
-        
-        if (shouldRespond) {
-          await this.sleep(this.responseDelay + Math.random() * 1000);
-          await this.generateChatResponse();
-        }
-      } else {
-        this.logger(`[${this.playerName}] Ignoring own chat message`);
-      }
+      // In turn-based speaking system, AI agents should only speak on their turn
+      // Don't respond reactively to other players' messages
+      // They will be triggered by the tick action when it's their turn
       return;
     }
     
@@ -172,6 +158,31 @@ export class LLMAIAgent {
       // Game state is already updated via routeActionToAgent before handleAction is called
       // Check current phase and act accordingly
       if (!this.gameState) return;
+      
+      // Handle turn-based speaking system
+      if (this.gameState.speakingTurn && this.gameState.speakingTurn.currentSpeaker === this.playerIndex) {
+        // It's our turn to speak!
+        const currentTurnIndex = this.gameState.speakingTurn.turnIndex;
+        const timeRemaining = this.gameState.speakingTurn.timeRemaining;
+        
+        // Only send if we haven't already sent a message this turn
+        if (this.lastSpeakingTurnIndex !== currentTurnIndex) {
+          // Generate and send a chat message
+          // Wait a bit to simulate thinking, but send before time expires
+          if (timeRemaining > 2 && timeRemaining <= 8) {
+            // Send message in the middle of our turn (between 2-8 seconds remaining)
+            // This gives us time to think but ensures we send before timeout
+            await this.sleep(this.responseDelay + Math.random() * 1000);
+            await this.generateChatResponse();
+            this.lastSpeakingTurnIndex = currentTurnIndex;
+          } else if (timeRemaining <= 2) {
+            // Time is running out - send immediately
+            await this.generateChatResponse();
+            this.lastSpeakingTurnIndex = currentTurnIndex;
+          }
+        }
+        return;
+      }
       
       // Handle team building phase
       if (this.gameState.game.phase === 'team-building') {
