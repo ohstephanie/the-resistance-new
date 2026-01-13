@@ -234,12 +234,17 @@ export class QueueManager {
       ? gameMode.replace("avalon_", "") as "easy" | "medium" | "hard"
       : null;
     const initialGameState = room.game.store.getState();
+    // Determine which players are AI (socketIDs starting with 'ai_')
+    const playerIsAI = initialGameState.player.socketIDs.map(
+      socketID => socketID !== null && socketID.startsWith('ai_')
+    );
     this.database.startGame(
       roomID,
       gameMode,
       difficulty,
       initialGameState.player.names,
-      initialGameState.player.roles
+      initialGameState.player.roles,
+      playerIsAI
     );
 
     // Get everyone to join game

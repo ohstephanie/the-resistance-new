@@ -135,6 +135,7 @@ Example response:
 - `num_players` - Number of players
 - `player_names` - JSON array of player names
 - `player_roles` - JSON array of player roles
+- `player_is_ai` - JSON array of booleans indicating which players are AI (true) or human (false)
 - `winner` - Winner ("agent" or "spy") or null if not finished
 - `started_at` - Timestamp when game started
 - `ended_at` - Timestamp when game ended (null if still in progress)
@@ -233,6 +234,50 @@ SELECT
 FROM games
 WHERE difficulty = 'medium'
 ORDER BY started_at DESC;
+```
+
+### Get AI player information
+```sql
+-- View which players are AI in a game
+SELECT 
+  id,
+  player_names,
+  player_roles,
+  player_is_ai
+FROM games
+WHERE id = 1;
+-- Note: player_is_ai is a JSON array like [false, true, false, true, false]
+-- where true means that player index is an AI agent
+```
+
+### Count AI vs Human players
+```sql
+-- Count how many AI players are in each game
+SELECT 
+  id,
+  num_players,
+  player_is_ai,
+  -- Count true values in JSON array (requires JSON parsing)
+  (SELECT COUNT(*) FROM json_each(player_is_ai) WHERE value = 'true') as ai_count,
+  (SELECT COUNT(*) FROM json_each(player_is_ai) WHERE value = 'false') as human_count
+FROM games
+WHERE player_is_ai IS NOT NULL;
+```
+
+### Find games with only AI players
+```sql
+-- Games where all players are AI
+SELECT id, room_id, num_players, player_names, player_is_ai
+FROM games
+WHERE (SELECT COUNT(*) FROM json_each(player_is_ai) WHERE value = 'true') = num_players;
+```
+
+### Find games with only human players
+```sql
+-- Games where all players are human
+SELECT id, room_id, num_players, player_names, player_is_ai
+FROM games
+WHERE (SELECT COUNT(*) FROM json_each(player_is_ai) WHERE value = 'false') = num_players;
 ```
 
 ## Data Export

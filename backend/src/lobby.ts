@@ -90,12 +90,17 @@ export class Lobby {
         ? gameMode.replace("avalon_", "") as "easy" | "medium" | "hard"
         : null;
       const initialGameState = this.game.store.getState();
+      // Determine which players are AI (socketIDs starting with 'ai_')
+      const playerIsAI = initialGameState.player.socketIDs.map(
+        socketID => socketID !== null && socketID.startsWith('ai_')
+      );
       this.database.startGame(
         this.id,
         gameMode,
         difficulty,
         initialGameState.player.names,
-        initialGameState.player.roles
+        initialGameState.player.roles,
+        playerIsAI
       );
       
       // Set up AI agent router for this game

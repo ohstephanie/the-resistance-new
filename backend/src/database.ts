@@ -11,6 +11,7 @@ export interface GameRecord {
   num_players: number;
   player_names: string; // JSON array
   player_roles: string; // JSON array
+  player_is_ai: string; // JSON array of booleans
   winner: string | null;
   started_at: string;
   ended_at: string | null;
@@ -89,12 +90,20 @@ export class GameDatabase {
         num_players INTEGER NOT NULL,
         player_names TEXT NOT NULL,
         player_roles TEXT NOT NULL,
+        player_is_ai TEXT NOT NULL,
         winner TEXT,
         started_at TEXT NOT NULL,
         ended_at TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    // Migration: Add player_is_ai column if it doesn't exist (for existing databases)
+    try {
+      this.db.exec(`ALTER TABLE games ADD COLUMN player_is_ai TEXT DEFAULT '[]'`);
+    } catch (e) {
+      // Column already exists, ignore
+    }
 
     // Game actions table
     this.db.exec(`
@@ -169,11 +178,17 @@ export class GameDatabase {
     gameMode: string,
     difficulty: string | null,
     playerNames: string[],
-    playerRoles: string[]
+    playerRoles: string[],
+    playerIsAI: boolean[] = []
   ): number {
+    // If playerIsAI is not provided, create array of false values
+    const isAIArray = playerIsAI.length === playerNames.length 
+      ? playerIsAI 
+      : new Array(playerNames.length).fill(false);
+    
     const stmt = this.db.prepare(`
-      INSERT INTO games (room_id, game_mode, difficulty, num_players, player_names, player_roles, started_at)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO games (room_id, game_mode, difficulty, num_players, player_names, player_roles, player_is_ai, started_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `);
 
     const result = stmt.run(
@@ -182,7 +197,8 @@ export class GameDatabase {
       difficulty,
       playerNames.length,
       JSON.stringify(playerNames),
-      JSON.stringify(playerRoles)
+      JSON.stringify(playerRoles),
+      JSON.stringify(isAIArray)
     );
 
     const gameId = result.lastInsertRowid as number;

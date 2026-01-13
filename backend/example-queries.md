@@ -105,3 +105,37 @@ GROUP BY difficulty;
 SELECT * FROM games WHERE room_id = 'YOUR_ROOM_ID';
 ```
 
+## Check Which Players Are AI
+```sql
+-- View player names, roles, and AI status
+SELECT 
+  id,
+  player_names,
+  player_roles,
+  player_is_ai
+FROM games
+WHERE id = 1;
+-- player_is_ai is a JSON array: [false, true, false] means player 0 is human, player 1 is AI, player 2 is human
+```
+
+## Count AI Players in Games
+```sql
+-- Count AI players per game
+SELECT 
+  id,
+  num_players,
+  (SELECT COUNT(*) FROM json_each(player_is_ai) WHERE value = 'true') as ai_count,
+  (SELECT COUNT(*) FROM json_each(player_is_ai) WHERE value = 'false') as human_count
+FROM games
+WHERE player_is_ai IS NOT NULL;
+```
+
+## Find Mixed Games (AI + Human)
+```sql
+-- Games with both AI and human players
+SELECT id, room_id, num_players, player_names, player_is_ai
+FROM games
+WHERE (SELECT COUNT(*) FROM json_each(player_is_ai) WHERE value = 'true') > 0
+  AND (SELECT COUNT(*) FROM json_each(player_is_ai) WHERE value = 'false') > 0;
+```
+
