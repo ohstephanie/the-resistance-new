@@ -14,6 +14,7 @@ import HowToPlayView from "./how-to-play/HowToPlayView";
 import LobbyView from "./lobby/LobbyView";
 import QueueView from "./lobby/QueueView";
 import WelcomeView from "./welcome/WelcomeView";
+import AdminView from "./admin/AdminView";
 
 export default function App() {
   const lobbyID = useSelector(LobbySelector.lobbyID);
@@ -39,6 +40,7 @@ export default function App() {
       <Route path="/" element={<MainView />} />
       <Route path="/about" element={<AboutView />} />
       <Route path="/how-to-play" element={<HowToPlayView />} />
+      <Route path="/admin" element={<AdminView />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

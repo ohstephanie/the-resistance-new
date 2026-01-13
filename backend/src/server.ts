@@ -16,6 +16,11 @@ export class Server {
   useLLMAgents: boolean = false;
   database: GameDatabase;
   
+  // Admin and research mode state
+  private researchMode: boolean = false;
+  private adminPassword: string;
+  private adminSessions: Set<string> = new Set(); // Store session tokens
+  
   constructor(io: socketIO.Server) {
     this.io = io;
     this.io.on("connection", this.onConnection.bind(this));
@@ -24,8 +29,163 @@ export class Server {
     this.database = new GameDatabase();
     this.queueManager = new QueueManager(io, this.sockets, this.database);
     
+    // Set admin password from environment or use default
+    this.adminPassword = process.env.ADMIN_PASSWORD || "admin123";
+    
     // Initialize AI agents if enabled
     this.initializeLLMAgents();
+  }
+  
+  // Sync research mode with queue manager
+  private syncResearchMode(): void {
+    this.queueManager.setResearchMode(this.researchMode);
+  }
+  
+  // Admin methods
+  isResearchMode(): boolean {
+    return this.researchMode;
+  }
+  
+  setResearchMode(enabled: boolean): void {
+    this.researchMode = enabled;
+    this.syncResearchMode();
+    console.log(`[Admin] Research mode ${enabled ? 'enabled' : 'disabled'}`);
+  }
+  
+  verifyAdminPassword(password: string): boolean {
+    return password === this.adminPassword;
+  }
+  
+  createAdminSession(): string {
+    const sessionToken = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    this.adminSessions.add(sessionToken);
+    return sessionToken;
+  }
+  
+  verifyAdminSession(sessionToken: string): boolean {
+    return this.adminSessions.has(sessionToken);
+  }
+  
+  getQueuePlayers(): Array<{ socketId: string; name: string; difficulty: string; isAI: boolean }> {
+    const allPlayers = this.queueManager.getAllQueuePlayers();
+    return allPlayers.map(entry => ({
+      socketId: entry.socketId,
+      name: entry.name,
+      difficulty: entry.difficulty,
+      isAI: entry.isAI || false
+    }));
+  }
+  
+  getActiveGames(): Array<{ roomId: string; difficulty: string | null; numPlayers: number; aiCount: number; status: string; gameCode: string }> {
+    const activeGames: Array<{ roomId: string; difficulty: string | null; numPlayers: number; aiCount: number; status: string; gameCode: string }> = [];
+    
+    for (const [roomId, lobby] of this.queueManager.rooms.entries()) {
+      if (lobby.game) {
+        const gameState = lobby.game.store.getState();
+        const playerIsAI = gameState.player.socketIDs.map(
+          socketID => socketID !== null && socketID.startsWith('ai_')
+        );
+        const aiCount = playerIsAI.filter(Boolean).length;
+        
+        // Get difficulty from database if available
+        const gameRecord = this.database.getGameByRoomId(roomId);
+        const difficulty = gameRecord?.difficulty || null;
+        
+        activeGames.push({
+          roomId,
+          difficulty,
+          numPlayers: gameState.player.names.length,
+          aiCount,
+          status: gameState.game.phase,
+          gameCode: roomId
+        });
+      }
+    }
+    
+    return activeGames;
+  }
+  
+  async createGameManually(
+    selectedPlayerSocketIds: string[],
+    difficulty: "easy" | "medium" | "hard",
+    numEvilAI: number
+  ): Promise<string | null> {
+    // Find selected players in queues
+    const selectedPlayers: Array<{ socket: Socket; name: string; socketId: string }> = [];
+    for (const [diff, queue] of this.queueManager.queues.entries()) {
+      for (const entry of queue) {
+        if (selectedPlayerSocketIds.includes(entry.socketId) && !entry.isAI) {
+          selectedPlayers.push({
+            socket: entry.socket,
+            name: entry.name,
+            socketId: entry.socketId
+          });
+        }
+      }
+    }
+    
+    if (selectedPlayers.length === 0) {
+      console.error("[Admin] No selected players found in queue");
+      return null;
+    }
+    
+    const requiredPlayers = difficulty === "easy" ? 5 : difficulty === "medium" ? 7 : 9;
+    const numHumanPlayers = selectedPlayers.length;
+    const totalPlayers = numHumanPlayers + numEvilAI;
+    
+    if (totalPlayers !== requiredPlayers) {
+      console.error(`[Admin] Invalid player count: ${numHumanPlayers} humans + ${numEvilAI} evil AI = ${totalPlayers}, but need exactly ${requiredPlayers} total`);
+      return null;
+    }
+    
+    // Remove selected players from queues
+    this.queueManager.removePlayersFromQueue(selectedPlayerSocketIds);
+    
+    // Create room
+    const roomID = this.idManager.generateCode();
+    const room = new Lobby(roomID, this.database);
+    const gameMode = difficulty === "easy" ? "avalon_easy" : difficulty === "medium" ? "avalon_medium" : "avalon_hard";
+    room.store.dispatch(LobbyAction.updateGameOptions({ options: gameMode }));
+    this.queueManager.rooms.set(roomID, room);
+    
+    // Add human players
+    const usedNames = new Set(selectedPlayers.map(p => p.name));
+    selectedPlayers.forEach(({ socket, name, socketId }) => {
+      socket.join(roomID);
+      room.onJoin(name, socket, this.io);
+      this.sockets.set(socketId, roomID);
+      
+      socket.emit("action", actionFromServer(LobbyAction.updateQueueState({ 
+        inQueue: false, 
+        queuePosition: 0,
+        name 
+      })));
+    });
+    
+    // Create AI players
+    const aiSocketIds: string[] = [];
+    
+    // Create evil AI players only (no good AI)
+    for (let i = 0; i < numEvilAI; i++) {
+      const aiSocket = await this.createAIAgent(difficulty);
+      if (aiSocket) {
+        aiSocketIds.push(aiSocket.id);
+        // Add AI to room
+        aiSocket.join(roomID);
+        const aiName = this.queueManager.generateRandomName(usedNames);
+        usedNames.add(aiName);
+        room.onJoin(aiName, aiSocket, this.io);
+        this.sockets.set(aiSocket.id, roomID);
+      }
+    }
+    
+    // Remove AI players from queue (they were auto-added)
+    this.queueManager.removePlayersFromQueue(aiSocketIds);
+    
+    // Start the game
+    this.queueManager.startGame(roomID);
+    
+    return roomID;
   }
   
   private initializeLLMAgents(): void {

@@ -31,12 +31,13 @@ const DIFFICULTY_GAME_MODES: { [key in Difficulty]: "avalon_easy" | "avalon_medi
 };
 
 export class QueueManager {
-  private queues: Map<Difficulty, Array<QueueEntry>>;
+  public queues: Map<Difficulty, Array<QueueEntry>>; // Made public for admin access
   public rooms: Map<string, Lobby>;
   private idManager: RoomCodeManager;
   private io: socketIO.Server;
   private sockets: Map<string, string | null>;
   private database: GameDatabase;
+  private researchMode: boolean = false;
 
   constructor(io: socketIO.Server, sockets: Map<string, string | null>, database: GameDatabase) {
     this.queues = new Map();
@@ -94,8 +95,45 @@ export class QueueManager {
     }
 
     // Check if we have enough players to start a game for this difficulty
-    this.checkAndStartGame(difficulty);
+    // Only auto-start if not in research mode
+    if (!this.researchMode) {
+      this.checkAndStartGame(difficulty);
+    }
   }
+  
+  setResearchMode(enabled: boolean): void {
+    this.researchMode = enabled;
+  }
+  
+  isResearchMode(): boolean {
+    return this.researchMode;
+  }
+  
+  // Get all players from all queues (for admin)
+  getAllQueuePlayers(): Array<QueueEntry & { difficulty: Difficulty }> {
+    const allPlayers: Array<QueueEntry & { difficulty: Difficulty }> = [];
+    for (const [difficulty, queue] of this.queues.entries()) {
+      for (const entry of queue) {
+        allPlayers.push({ ...entry, difficulty });
+      }
+    }
+    return allPlayers;
+  }
+  
+  // Remove specific players from queue by socketId
+  removePlayersFromQueue(socketIds: string[]): void {
+    for (const [difficulty, queue] of this.queues.entries()) {
+      const initialLength = queue.length;
+      const filtered = queue.filter(entry => !socketIds.includes(entry.socketId));
+      this.queues.set(difficulty, filtered);
+      
+      // Update queue positions if players were removed
+      if (filtered.length !== initialLength) {
+        this.updateQueuePositions(difficulty);
+      }
+    }
+  }
+  
 
   removeFromQueue(socketId: string) {
     // Search all queues for this socket
@@ -202,7 +240,7 @@ export class QueueManager {
     }
   }
 
-  private startGame(roomID: string) {
+  startGame(roomID: string) {
     const room = this.rooms.get(roomID);
     if (!room) return;
 

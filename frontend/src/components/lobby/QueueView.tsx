@@ -27,13 +27,15 @@ export default function QueueView() {
         <p>Position in queue: <strong>{queuePosition}</strong></p>
         <p>Waiting for more players to join...</p>
       </div>
-      <Button 
-        onClick={handleLeaveQueue}
-        variant="outline-danger"
-        className={s.leaveButton}
-      >
-        Leave Queue
-      </Button>
+      <div className={s.buttonGroup}>
+        <Button 
+          onClick={handleLeaveQueue}
+          variant="outline-danger"
+          className={s.leaveButton}
+        >
+          Exit Queue
+        </Button>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,73 @@
+.AdminView {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+
+    h1 {
+      margin: 0;
+    }
+  }
+
+  .alert {
+    margin-bottom: 1rem;
+  }
+
+  .loginCard {
+    max-width: 400px;
+    margin: 4rem auto;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .card {
+    :global(.card-title) {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+      color: black;
+    }
+
+    .toggleContainer {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .description {
+      font-size: 0.9rem;
+      color: #666;
+      margin-top: 0.5rem;
+    }
+
+    .playerList {
+      max-height: 400px;
+      overflow-y: auto;
+
+      .playerItem {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .selected {
+        background-color: #e7f3ff;
+        border-color: #0d6efd;
+      }
+    }
+
+    .gameItem {
+      font-size: 0.9rem;
+    }
+  }
+}

@@ -158,8 +158,33 @@ export class Lobby {
     const socketIDs = this.game?.store.getState().player.socketIDs;
     const count = socketIDs?.reduce((a, v) => (v === null ? a : a + 1), 0);
     if (count === 0) {
-      // Start game
+      // Game end
       console.log("Game end:", this.id);
+      
+      // In research mode, re-add human players to queue
+      const server = (io as any).serverInstance;
+      if (server && server.isResearchMode && server.isResearchMode()) {
+        const gameState = this.game.store.getState();
+        const playerNames = gameState.player.names;
+        const playerSocketIDs = gameState.player.socketIDs;
+        
+        // Re-add human players to queue (use "easy" as default in research mode)
+        playerSocketIDs.forEach((socketID, index) => {
+          if (socketID && !socketID.startsWith('ai_')) {
+            // Find the socket and re-add to queue
+            const socket = io.sockets.sockets.get(socketID);
+            if (socket) {
+              // Remove from room mapping first
+              server.sockets.delete(socketID);
+              socket.leave(this.id);
+              
+              // Re-add to queue
+              server.queueManager.addToQueue(socket, "easy", false);
+            }
+          }
+        });
+      }
+      
       this.game.stop();
       this.game = null;
       const updateGameStateAction = LobbyAction.updateGameState({
@@ -268,6 +293,34 @@ export class Game {
       this.stop();
       // Save game end
       this.database.endGame(this.roomID, gameState.winner);
+      
+      // In research mode, re-add human players to queue after a short delay
+      const server = (io as any).serverInstance;
+      if (server && server.isResearchMode && server.isResearchMode()) {
+        setTimeout(() => {
+          const finalGameState = this.store.getState();
+          const playerSocketIDs = finalGameState.player.socketIDs;
+          
+          // Re-add human players to queue
+          playerSocketIDs.forEach((socketID) => {
+            if (socketID && !socketID.startsWith('ai_')) {
+              const socket = io.sockets.sockets.get(socketID);
+              if (socket) {
+                // Check if player is still connected and not already in queue
+                const roomID = server.sockets.get(socketID);
+                if (roomID === this.roomID) {
+                  // Remove from room mapping
+                  server.sockets.delete(socketID);
+                  socket.leave(this.roomID);
+                  
+                  // Re-add to queue (use "easy" as default in research mode)
+                  server.queueManager.addToQueue(socket, "easy", false);
+                }
+              }
+            }
+          });
+        }, 2000); // 2 second delay to allow game end UI to show
+      }
     }
   }
   

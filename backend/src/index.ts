@@ -167,6 +167,125 @@ app.get("/api/database/stats", (req, res) => {
   }
 });
 
+// Admin API endpoints
+app.use(express.json());
+
+// Public endpoint to check research mode (for frontend)
+app.get("/api/research-mode", (req, res) => {
+  res.json({ researchMode: server.isResearchMode() });
+});
+
+// Admin authentication
+app.post("/api/admin/login", (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ error: "Password required" });
+    }
+    
+    if (server.verifyAdminPassword(password)) {
+      const sessionToken = server.createAdminSession();
+      res.json({ success: true, sessionToken });
+    } else {
+      res.status(401).json({ error: "Invalid password" });
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Unknown error" });
+  }
+});
+
+// Middleware to verify admin session
+const verifyAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const sessionToken = req.headers.authorization?.replace("Bearer ", "");
+  if (!sessionToken || !server.verifyAdminSession(sessionToken)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  next();
+};
+
+// Get research mode status
+app.get("/api/admin/research-mode", verifyAdmin, (req, res) => {
+  res.json({ researchMode: server.isResearchMode() });
+});
+
+// Toggle research mode
+app.post("/api/admin/research-mode", verifyAdmin, (req, res) => {
+  try {
+    const { enabled } = req.body;
+    if (typeof enabled !== "boolean") {
+      return res.status(400).json({ error: "enabled must be a boolean" });
+    }
+    server.setResearchMode(enabled);
+    res.json({ success: true, researchMode: enabled });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Unknown error" });
+  }
+});
+
+// Get queue players
+app.get("/api/admin/queue", verifyAdmin, (req, res) => {
+  try {
+    const players = server.getQueuePlayers();
+    res.json({ players });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Unknown error" });
+  }
+});
+
+// Get active games
+app.get("/api/admin/games", verifyAdmin, (req, res) => {
+  try {
+    const games = server.getActiveGames();
+    res.json({ games });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Unknown error" });
+  }
+});
+
+// Create game manually
+app.post("/api/admin/create-game", verifyAdmin, async (req, res) => {
+  try {
+    const { playerSocketIds, difficulty, numEvilAI } = req.body;
+    
+    if (!Array.isArray(playerSocketIds) || playerSocketIds.length === 0) {
+      return res.status(400).json({ error: "playerSocketIds must be a non-empty array" });
+    }
+    
+    if (!["easy", "medium", "hard"].includes(difficulty)) {
+      return res.status(400).json({ error: "difficulty must be 'easy', 'medium', or 'hard'" });
+    }
+    
+    if (typeof numEvilAI !== "number" || numEvilAI < 0) {
+      return res.status(400).json({ error: "numEvilAI must be a non-negative number" });
+    }
+    
+    const roomId = await server.createGameManually(playerSocketIds, difficulty, numEvilAI);
+    
+    if (!roomId) {
+      return res.status(400).json({ error: "Failed to create game" });
+    }
+    
+    res.json({ success: true, roomId });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Unknown error" });
+  }
+});
+
+// Remove player from queue
+app.post("/api/admin/remove-player", verifyAdmin, (req, res) => {
+  try {
+    const { socketId } = req.body;
+    if (!socketId) {
+      return res.status(400).json({ error: "socketId required" });
+    }
+    
+    server.queueManager.removePlayersFromQueue([socketId]);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Unknown error" });
+  }
+});
+
 app.use(express.static(path.join(__dirname, "../../frontend/build")));
 
 app.get("*", (req, res) => {
