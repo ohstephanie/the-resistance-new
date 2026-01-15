@@ -314,10 +314,10 @@ export const GameFunc = {
       }
       if (state.assassinChoice !== null) {
         const choice = state.assassinChoice;
-        const wasCaptain = state.player.roles[choice] === "captain";
+        const wasMerlin = state.player.roles[choice] === "merlin";
         msg += `${nameStr(choice)} was ${
-          wasCaptain ? "" : "not "
-        }the {{role:captain}}. `;
+          wasMerlin ? "" : "not "
+        }the {{role:merlin}}. `;
       }
       const winners = state.player.roles
         .map((x, i) => i)
@@ -691,7 +691,7 @@ export const GameFunc = {
         if (!state.player.roles.includes("assassin")) return "agent";
         if (state.assassinChoice === null) return "agent";
         const assassinated = state.player.roles[state.assassinChoice];
-        if (assassinated === "captain") {
+        if (assassinated === "merlin") {
           return "spy";
         } else {
           return "agent";

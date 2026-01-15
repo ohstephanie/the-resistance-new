@@ -5,7 +5,7 @@ import {
   LobbyAction,
   MissionPlayerCount,
 } from "common-modules";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Button from "react-bootstrap/esm/Button";
 import { useDispatch, useSelector } from "react-redux";
 import { GameSelector } from "../../store";
@@ -184,6 +184,15 @@ function AssassinateButtons() {
 function LeaveGameButtons() {
   const dispatch = useDispatch();
   const winner = useSelector(GameSelector.winner);
+  const [researchMode, setResearchMode] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/research-mode")
+      .then((response) => response.json())
+      .then((data) => setResearchMode(data.researchMode || false))
+      .catch((err) => console.error("Failed to fetch research mode:", err));
+  }, []);
+
   const handleClick = () => {
     dispatch(LobbyAction.clientLeaveGame());
   };
@@ -198,9 +207,11 @@ function LeaveGameButtons() {
           </TF>
         </h3>
       )}
-      <Button onClick={handleClick} variant="primary">
-        Return to Lobby
-      </Button>
+      {!researchMode && (
+        <Button onClick={handleClick} variant="primary">
+          Return to Lobby
+        </Button>
+      )}
     </div>
   );
 }

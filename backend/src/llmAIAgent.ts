@@ -454,7 +454,7 @@ export class LLMAIAgent {
         .map((name, index) => ({ index, name }))
         .filter((_, index) => {
           const role = this.gameState!.player.roles[index];
-          return role === 'merlin' || role === 'captain' || role === 'agent' || role === 'loyal_servant' || role === 'percival' || role === 'deputy';
+          return role === 'merlin' || role === 'agent' || role === 'loyal_servant' || role === 'percival' || role === 'deputy';
         });
       
       const messages = this.promptEngine.generateAssassinationPrompt(
@@ -598,7 +598,7 @@ export class LLMAIAgent {
     if (!this.gameState) return 0;
     const goodPlayers = this.gameState.player.roles
       .map((role, index) => ({ role, index }))
-      .filter(({ role }) => role === 'merlin' || role === 'captain' || role === 'agent' || role === 'loyal_servant' || role === 'percival' || role === 'deputy');
+      .filter(({ role }) => role === 'merlin' || role === 'agent' || role === 'loyal_servant' || role === 'percival' || role === 'deputy');
     
     if (goodPlayers.length === 0) return 0;
     return goodPlayers[Math.floor(Math.random() * goodPlayers.length)].index;

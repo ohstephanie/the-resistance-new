@@ -41,6 +41,7 @@ describe("game initialization", () => {
           roles: ["agent", "agent", "spy", "spy", "agent"],
           socketIDs: ["1", "0", "2", "3", "4"],
         },
+        speakingTurn: null,
         statusMessage: "Welcome to The Resistance",
         team: null,
         teamHistory: [],
@@ -72,9 +73,10 @@ describe("game initialization", () => {
         missionHistory: [],
         player: {
           names: ["bob", "alice", "charlie", "david", "edward"],
-          roles: ["agent", "captain", "assassin", "spy", "agent"],
+          roles: ["agent", "agent", "assassin", "spy", "agent"],
           socketIDs: ["1", "0", "2", "3", "4"],
         },
+        speakingTurn: null,
         statusMessage: "Welcome to The Resistance",
         team: null,
         teamHistory: [],
@@ -89,7 +91,7 @@ describe("game initialization", () => {
         GameAction.initialize({
           gamemode: {
             assassin: true,
-            captain: true,
+            captain: false,
             deputy: true,
             imposter: true,
             intern: true,
@@ -113,9 +115,10 @@ describe("game initialization", () => {
         missionHistory: [],
         player: {
           names: ["bob", "alice", "charlie", "david", "edward"],
-          roles: ["deputy", "agent", "imposter", "assassin", "captain"],
+          roles: ["agent", "agent", "imposter", "assassin", "deputy"],
           socketIDs: ["1", "0", "2", "3", "4"],
         },
+        speakingTurn: null,
         statusMessage: "Welcome to The Resistance",
         team: null,
         teamHistory: [],
@@ -168,13 +171,14 @@ describe("game initialization", () => {
           ],
           socketIDs: ["2", "1", "7", "6", "0", "5", "3", "4"],
         },
+        speakingTurn: null,
         statusMessage: "Welcome to The Resistance",
         team: null,
         teamHistory: [],
         winner: null,
       });
     });
-    it("should initialize (assassins 8 players)", () => {
+    it("should initialize (normal 8 players)", () => {
       const store = configureStore({
         reducer: GameReducer,
       });
@@ -220,6 +224,7 @@ describe("game initialization", () => {
           ],
           socketIDs: ["2", "1", "7", "6", "0", "5", "3", "4"],
         },
+        speakingTurn: null,
         statusMessage: "Welcome to The Resistance",
         team: null,
         teamHistory: [],
@@ -234,7 +239,7 @@ describe("game initialization", () => {
         GameAction.initialize({
           gamemode: {
             assassin: true,
-            captain: true,
+            captain: false,
             deputy: true,
             imposter: true,
             intern: true,
@@ -270,15 +275,16 @@ describe("game initialization", () => {
           roles: [
             "intern",
             "agent",
-            "deputy",
+            "agent",
             "agent",
             "imposter",
-            "captain",
+            "deputy",
             "agent",
             "assassin",
           ],
           socketIDs: ["2", "1", "7", "6", "0", "5", "3", "4"],
         },
+        speakingTurn: null,
         statusMessage: "Welcome to The Resistance",
         team: null,
         teamHistory: [],

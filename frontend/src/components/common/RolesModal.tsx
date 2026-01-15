@@ -37,7 +37,7 @@ export default function RolesModal(props: RolesModalProps) {
           <TRole role="assassin" />
         </span>
         <span>
-          Attempts to assassinate the <TRole role="captain" /> if the{" "}
+          Attempts to assassinate the <TRole role="merlin" /> if the{" "}
           <TSuccess>agents</TSuccess> would win
         </span>
         <span>

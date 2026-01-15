@@ -464,7 +464,7 @@ export class Server {
   private getVisiblePlayers(gameState: GameState, playerIndex: number, role: string): Array<{ playerId: number; name: string; role: string; reason: string }> {
     const visible: Array<{ playerId: number; name: string; role: string; reason: string }> = [];
     
-    if (role === 'merlin' || role === 'captain') {
+    if (role === 'merlin') {
       gameState.player.roles.forEach((r, idx) => {
         if (idx !== playerIndex && (r === 'spy' || r === 'morgana' || r === 'assassin' || r === 'mordred' || r === 'imposter' || r === 'mole')) {
           if (role === 'merlin' && r === 'mordred') return;
@@ -487,13 +487,13 @@ export class Server {
           });
         }
       });
-    } else if (role === 'percival' || role === 'deputy') {
+    } else if (role === 'percival') {
       gameState.player.roles.forEach((r, idx) => {
-        if (idx !== playerIndex && (r === 'merlin' || r === 'morgana' || r === 'captain' || r === 'imposter')) {
+        if (idx !== playerIndex && (r === 'merlin' || r === 'morgana')) {
           visible.push({
             playerId: idx,
             name: gameState.player.names[idx],
-            role: r === 'merlin' || r === 'captain' ? 'merlin_or_captain' : 'morgana_or_impostor',
+            role: r === 'merlin' ? 'merlin' : 'morgana',
             reason: 'special_sight'
           });
         }

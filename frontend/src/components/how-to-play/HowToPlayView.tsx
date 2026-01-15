@@ -23,10 +23,10 @@ export default function HowToPlayView() {
         <Row>
           <Col xs={0} lg={1} />
           <Col xs={12} lg={10}>
-            <h1 className={s.title}>The Resistance</h1>
+            <h1 className={s.title}>Avalon</h1>
             <h2>Classic Mode</h2>
             <p>
-              In The Resistance, players are in one of two teams &ndash; the{" "}
+              Players are in one of two teams &ndash; the{" "}
               <TSuccess>agents</TSuccess> or the <TFail>spies</TFail>. All{" "}
               <TFail>spies</TFail> know the identities of all other{" "}
               <TFail>spies</TFail>, but <TSuccess>agents</TSuccess> only know

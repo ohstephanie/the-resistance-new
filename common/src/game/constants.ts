@@ -78,15 +78,15 @@ export const TeamPoolsNormal: { [n: number]: Role[] } = {
 };
 
 export const TeamPoolsAssassins: { [n: number]: Role[] } = {
-  5: ["agent", "agent", "captain", "spy", "assassin"],
-  6: ["agent", "agent", "agent", "captain", "spy", "assassin"],
-  7: ["agent", "agent", "agent", "captain", "spy", "intern", "assassin"],
+  5: ["agent", "agent", "agent", "spy", "assassin"],
+  6: ["agent", "agent", "agent", "agent", "spy", "assassin"],
+  7: ["agent", "agent", "agent", "agent", "spy", "intern", "assassin"],
   8: [
     "agent",
     "agent",
     "agent",
     "agent",
-    "captain",
+    "agent",
     "spy",
     "assassin",
     "intern",
@@ -97,7 +97,7 @@ export const TeamPoolsAssassins: { [n: number]: Role[] } = {
     "agent",
     "agent",
     "agent",
-    "captain",
+    "agent",
     "spy",
     "assassin",
     "intern",
@@ -108,7 +108,7 @@ export const TeamPoolsAssassins: { [n: number]: Role[] } = {
     "agent",
     "agent",
     "agent",
-    "captain",
+    "agent",
     "spy",
     "spy",
     "assassin",

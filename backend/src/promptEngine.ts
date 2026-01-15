@@ -223,7 +223,7 @@ Instructions:
 - Respond naturally to the conversation as a human would
 - Keep responses SHORT (1-2 sentences max) - this is a fast-paced game
 - If you are evil, be subtle and don't reveal your true nature
-- If you are good, try to help your team while protecting Merlin/Captain
+- If you are good, try to help your team while protecting Merlin
 - Consider the game state and what would be strategically helpful
 - Don't repeat what others have said
 
@@ -373,15 +373,15 @@ ${gameContext}
 
 ${chatContext}
 
-The good team has won 3 missions. You must now assassinate Merlin/Captain to win the game.
+The good team has won 3 missions. You must now assassinate Merlin to win the game.
 
 Available Targets (all are good players):
 ${targetList}
 
 Instructions:
-- You must identify which player is Merlin/Captain
+- You must identify which player is Merlin
 - Consider voting patterns, team proposals, and chat behavior
-- If you saw a player as evil, they are NOT Merlin/Captain (Merlin/Captain sees evil, so evil players appear evil to them)
+- If you saw a player as evil, they are NOT Merlin (Merlin sees evil, so evil players appear evil to them)
 - Respond with ONLY the target index number (e.g., "2"), nothing else`;
 
     return [

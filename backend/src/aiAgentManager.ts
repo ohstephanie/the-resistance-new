@@ -264,7 +264,7 @@ export class AIAgentManager {
     // This is a simplified version - you'd need to implement full role visibility logic
     // based on the game rules (Merlin sees evil, spies see each other, etc.)
     
-    if (role === 'merlin' || role === 'captain') {
+    if (role === 'merlin') {
       // Can see evil players
       gameState.player.roles.forEach((r, idx) => {
         if (idx !== playerIndex && (r === 'spy' || r === 'morgana' || r === 'assassin' || r === 'mordred' || r === 'imposter' || r === 'mole')) {
@@ -289,14 +289,14 @@ export class AIAgentManager {
           });
         }
       });
-    } else if (role === 'percival' || role === 'deputy') {
-      // Sees Merlin/Morgana or Captain/Impostor
+    } else if (role === 'percival') {
+      // Sees Merlin/Morgana
       gameState.player.roles.forEach((r, idx) => {
-        if (idx !== playerIndex && (r === 'merlin' || r === 'morgana' || r === 'captain' || r === 'imposter')) {
+        if (idx !== playerIndex && (r === 'merlin' || r === 'morgana')) {
           visible.push({
             playerId: idx,
             name: gameState.player.names[idx],
-            role: r === 'merlin' || r === 'captain' ? 'merlin_or_captain' : 'morgana_or_impostor',
+            role: r === 'merlin' ? 'merlin' : 'morgana',
             reason: 'special_sight'
           });
         }
