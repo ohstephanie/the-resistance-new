@@ -47,7 +47,7 @@ function MissionButtons() {
   const role = useSelector(GameSelector.playerRole);
   const player = useSelector(GameSelector.playerIndex);
   const missionNum = useSelector(GameSelector.missionNum);
-  const failDisabled = GameAgentRoles.includes(role);
+  const failDisabled = !GameAgentRoles.includes(role);
   const [selected, setSelected] = useState(false);
 
   const onMissionSelected = (success: boolean) => {
@@ -194,7 +194,7 @@ function LeaveGameButtons() {
   }, []);
 
   const handleClick = () => {
-    dispatch(LobbyAction.clientLeaveGame());
+    dispatch(LobbyAction.clientLeaveLobby());
   };
   return (
     <div className={s.centerButtonBox}>
@@ -202,8 +202,8 @@ function LeaveGameButtons() {
         <h3 className={"font-weight-bold"}>
           <TF>
             {winner === "agent"
-              ? "{{success: Agents Win!}}"
-              : "{{fail: Spies Win!}}"}
+              ? "{{success: Good Win!}}"
+              : "{{fail: Evil Win!}}"}
           </TF>
         </h3>
       )}

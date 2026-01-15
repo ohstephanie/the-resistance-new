@@ -131,20 +131,20 @@ function RolesList(props: RolesListProps) {
   const roles = Array.from(rolesMap.entries()).sort(
     (a, b) => GameRolesOrder.indexOf(a[0]) - GameRolesOrder.indexOf(b[0])
   );
-  const agents = roles.filter((x) => GameAgentRoles.includes(x[0]));
-  const spies = roles.filter((x) => !GameAgentRoles.includes(x[0]));
+  const good = roles.filter((x) => GameAgentRoles.includes(x[0]));
+  const evil = roles.filter((x) => !GameAgentRoles.includes(x[0]));
   return (
     <div className={s.rolesList}>
       <span>Roles</span>
       <br />
-      {agents.map((x, i) => (
+      {good.map((x, i) => (
         <Fragment key={i}>
           {x[1]}&nbsp;
           <TRole role={x[0]} />{" "}
         </Fragment>
       ))}
       <br />
-      {spies.map((x, i) => (
+      {evil.map((x, i) => (
         <Fragment key={i}>
           {x[1]}&nbsp;
           <TRole role={x[0]} />{" "}

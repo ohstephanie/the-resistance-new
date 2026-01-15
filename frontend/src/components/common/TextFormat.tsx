@@ -53,7 +53,7 @@ type RoleProps = {
 export function TRole(props: RoleProps) {
   const agent = GameAgentRoles.includes(props.role);
   return (
-    <span className={cn(agent ? s.success : s.fail, props.className)}>
+    <span className={cn(agent ? s.fail : s.success, props.className)}>
       {GameRolesDisplay.get(props.role)}
     </span>
   );

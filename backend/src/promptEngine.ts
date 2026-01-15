@@ -434,7 +434,7 @@ Instructions:
       captain: {
         name: 'Captain',
         team: 'Good',
-        abilities: 'Can see all spies. Must remain hidden.'
+        abilities: 'Can see all evil. Must remain hidden.'
       },
       deputy: {
         name: 'Deputy',
@@ -444,22 +444,22 @@ Instructions:
       spy: {
         name: 'Spy',
         team: 'Evil',
-        abilities: 'Can see other spies. Must sabotage missions.'
+        abilities: 'Can see other evil. Must sabotage missions.'
       },
       imposter: {
         name: 'Impostor',
         team: 'Evil',
-        abilities: 'Appears as Captain to Deputy. Can see other spies.'
+        abilities: 'Appears as Captain to Deputy. Can see other evil.'
       },
       mole: {
         name: 'Mole',
         team: 'Evil',
-        abilities: 'Hidden from Captain. Can see other spies.'
+        abilities: 'Hidden from Captain. Can see other evil.'
       },
       intern: {
         name: 'Intern',
         team: 'Evil',
-        abilities: 'Unknown to other spies. Must work alone.'
+        abilities: 'Unknown to other evil. Must work alone.'
       }
     };
     

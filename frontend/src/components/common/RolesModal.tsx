@@ -1,6 +1,6 @@
 import Modal from "react-bootstrap/esm/Modal";
 import s from "./RolesModal.module.scss";
-import { TFail, TRole, TSuccess } from "./TextFormat";
+import { TRole } from "./TextFormat";
 
 type RolesModalProps = {
   hideFullRulesLink?: boolean;
@@ -12,60 +12,39 @@ export default function RolesModal(props: RolesModalProps) {
   return (
     <Modal show={props.show} onHide={props.onClose}>
       <Modal.Header closeButton>
-        <Modal.Title>The Resistance Roles</Modal.Title>
+        <Modal.Title>Avalon Roles</Modal.Title>
       </Modal.Header>
       <Modal.Body className={s.body}>
-        <h1 className={s.header}>Classic</h1>
+        <h1 className={s.header}>Good</h1>
         <span>
-          <TRole role="agent" />{" "}
+          <TRole role="merlin" />{" "}
         </span>
-        <span>Knows only themself</span>
+        <span>Knows all evil players except Mordred</span>
         <span>
-          <TRole role="spy" />{" "}
+          <TRole role="percival" />{" "}
         </span>
+        <span>Sees Merlin and Morgana but doesn't know which is which</span>
         <span>
-          Knows other <TFail>spies</TFail>
+          <TRole role="loyal_servant" />{" "}
         </span>
-        <h1 className={s.header}>Assassins Mode</h1>
+        <span>Regular good player with no special abilities</span>
+        <h1 className={s.header}>Evil</h1>
         <span>
-          <TRole role="captain" />
+          <TRole role="assassin" />{" "}
         </span>
+        <span>Can assassinate Merlin if good wins 3 missions</span>
         <span>
-          Knows other <TFail>spies</TFail>
+          <TRole role="morgana" />{" "}
         </span>
+        <span>Appears as Merlin to Percival</span>
         <span>
-          <TRole role="assassin" />
+          <TRole role="mordred" />{" "}
         </span>
+        <span>Hidden from Merlin</span>
         <span>
-          Attempts to assassinate the <TRole role="merlin" /> if the{" "}
-          <TSuccess>agents</TSuccess> would win
+          <TRole role="oberon" />{" "}
         </span>
-        <span>
-          <TRole role="intern" />
-        </span>
-        <span>
-          Role is unknown to other <TFail>spies</TFail>, does not know other{" "}
-          <TFail>spies</TFail>
-        </span>
-        <h1 className={s.header}>Custom Mode</h1>
-        <span>
-          <TRole role="deputy" />
-        </span>
-        <span>
-          Knows the <TRole role="captain" />
-        </span>
-        <span>
-          <TRole role="imposter" />
-        </span>
-        <span>
-          Appears as <TRole role="captain" /> to the <TRole role="deputy" />
-        </span>
-        <span>
-          <TRole role="mole" />
-        </span>
-        <span>
-          Role is unknown to the <TRole role="captain" />
-        </span>
+        <span>Unknown to and doesn't know other evil players</span>
       </Modal.Body>
     </Modal>
   );

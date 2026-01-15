@@ -39,7 +39,16 @@
   margin-bottom: 0;
 }
 
-.role {
-  margin-bottom: 0.5rem;
-  display: flex;
+.linkButton {
+  background: none;
+  border: none;
+  color: $primary;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  
+  &:hover {
+    color: shift-color($primary, $link-shade-percentage);
+  }
 }

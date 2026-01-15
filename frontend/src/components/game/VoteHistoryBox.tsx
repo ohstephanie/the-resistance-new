@@ -31,7 +31,7 @@ export default function VoteHistoryBox() {
     <div className={s.VoteHistoryBox}>
       <div className={s.helpText}>
         <div className={s.item}>
-          <div className={cn(s.box, s.leader)} /> Team Leader
+          <div className={cn(s.box, s.leader)} /> Leader
         </div>
         <div className={s.item}>
           <div className={cn(s.box, s.member)} /> Team Member
@@ -41,14 +41,14 @@ export default function VoteHistoryBox() {
             className={cn(s.box, s.approve)}
             style={{ backgroundImage: `url(${iconURL})` }}
           />{" "}
-          Approve Vote
+          Approved Vote
         </div>
         <div className={s.item}>
           <div
             className={cn(s.box, s.reject)}
             style={{ backgroundImage: `url(${iconURL})` }}
           />{" "}
-          Reject Vote
+          Rejected Vote
         </div>
       </div>
       <div className={s.wrapper}>

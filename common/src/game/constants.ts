@@ -169,7 +169,30 @@ export const GameRolesOrder: Role[] = [
   "mordred",
   "oberon",
 ];
-export const GameAgentRoles: Role[] = ["agent", "captain", "deputy"];
+export const EvilRoles: Role[] = [
+  "spy",
+  "captain",
+  "deputy",
+  "assassin",
+  "imposter",
+  "mole",
+  "intern",
+  "morgana",
+  "mordred",
+  "oberon",
+];
+export const GameAgentRoles: Role[] = [
+  "spy",
+  "captain",
+  "deputy",
+  "assassin",
+  "imposter",
+  "mole",
+  "intern",
+  "morgana",
+  "mordred",
+  "oberon",
+];
 export const GameRolesDisplay: Map<Role, string> = new Map([
   ["agent", "Agent"],
   ["captain", "Captain"],

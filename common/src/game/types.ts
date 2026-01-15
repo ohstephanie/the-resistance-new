@@ -77,16 +77,16 @@ export type Role =
   | "morgana"
   | "mordred"
   | "oberon";
-// --- Team Agent ---
-// Agent knows noone
-// Captain knows who spies are
+// --- Team Good ---
+// Good knows noone
+// Captain knows who evil are
 // Deputy knows captain and impostor but doesn't know who's who
-// --- Team Spies ---
-// Spies know fellow spies (except intern)
-// Assassin knows fellow spies (except intern), can kill one person at end of game
-// Imposter knows fellow spies, appears as Captain to Deputy
+// --- Team Evil ---
+// Evil know fellow evil (except intern)
+// Assassin knows fellow evil (except intern), can kill one person at end of game
+// Imposter knows fellow evil, appears as Captain to Deputy
 // Mole is unknown to Captain
-// Intern is unknown to other spies
+// Intern is unknown to other evil
 
 export type SpeakingTurn = {
   currentSpeaker: number;

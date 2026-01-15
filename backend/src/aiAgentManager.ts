@@ -262,7 +262,7 @@ export class AIAgentManager {
     const visible: Array<{ playerId: number; name: string; role: string; reason: string }> = [];
     
     // This is a simplified version - you'd need to implement full role visibility logic
-    // based on the game rules (Merlin sees evil, spies see each other, etc.)
+    // based on the game rules (Merlin sees evil, evil see each other, etc.)
     
     if (role === 'merlin') {
       // Can see evil players
@@ -278,7 +278,7 @@ export class AIAgentManager {
         }
       });
     } else if (role === 'spy' || role === 'morgana' || role === 'assassin' || role === 'mordred' || role === 'imposter' || role === 'mole') {
-      // Spies see each other (except intern/oberon)
+      // Evil see each other (except intern/oberon)
       gameState.player.roles.forEach((r, idx) => {
         if (idx !== playerIndex && (r === 'spy' || r === 'morgana' || r === 'assassin' || r === 'mordred' || r === 'imposter' || r === 'mole')) {
           visible.push({

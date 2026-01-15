@@ -1,6 +1,7 @@
 import { shuffle, nameStr, count, plural, last } from "../util";
 import {
   ColorOrderDefault,
+  EvilRoles,
   GameAgentRoles,
   GameMaxPlayers,
   GameMinPlayers,
@@ -178,9 +179,6 @@ export const GameFunc = {
       state.game.phase = "team-building-review";
       state.game.phaseCountdown = GamePhaseLengths["team-building-review"];
 
-      // Stop speaking turn system when leaving team-building
-      state.speakingTurn = null;
-
       // Chat
       const leader = state.team!.leader;
       const members = state.team!.members;
@@ -323,8 +321,8 @@ export const GameFunc = {
         .map((x, i) => i)
         .filter((x) =>
           state.winner === "agent"
-            ? GameAgentRoles.includes(state.player.roles[x])
-            : !GameAgentRoles.includes(state.player.roles[x])
+            ? !EvilRoles.includes(state.player.roles[x])
+            : EvilRoles.includes(state.player.roles[x])
         )
         .map(nameStr);
       msg += `${winners.join(", ")} have won!`;

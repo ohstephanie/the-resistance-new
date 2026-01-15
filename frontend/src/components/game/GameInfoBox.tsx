@@ -28,7 +28,7 @@ export default function GameInfoBox() {
     <div className={s.GameInfoBox}>
       <span>Game Mode: {gameMode}</span>
       <RolesList roles={roleList} />
-      <LobbyCopyURL />
+      {/* <LobbyCopyURL /> */}
     </div>
   );
 }
@@ -46,13 +46,13 @@ function RolesList(props: RolesListProps) {
   const roles = Array.from(rolesMap.entries()).sort(
     (a, b) => GameRolesOrder.indexOf(a[0]) - GameRolesOrder.indexOf(b[0])
   );
-  const agents = roles.filter((x) => GameAgentRoles.includes(x[0]));
-  const spies = roles.filter((x) => !GameAgentRoles.includes(x[0]));
+  const good = roles.filter((x) => !GameAgentRoles.includes(x[0]));
+  const evil = roles.filter((x) => GameAgentRoles.includes(x[0]));
   return (
     <div className={s.rolesList}>
       <span>Roles List:</span>
       <span>
-        {agents.map((x, i) => (
+        {good.map((x, i) => (
           <Fragment key={i}>
             {x[1]}&nbsp;
             <TRole role={x[0]} />{" "}
@@ -60,7 +60,7 @@ function RolesList(props: RolesListProps) {
         ))}
       </span>
       <span>
-        {spies.map((x, i) => (
+        {evil.map((x, i) => (
           <Fragment key={i}>
             {x[1]}&nbsp;
             <TRole role={x[0]} />{" "}
@@ -78,6 +78,7 @@ function RolesList(props: RolesListProps) {
   );
 }
 
+// Removed this logic since not using custom game links 
 function LobbyCopyURL() {
   const roomCode = useSelector(LobbySelector.lobbyID);
   const url = new URL(window.location.href);
