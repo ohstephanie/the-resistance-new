@@ -60,6 +60,7 @@ export class LLMAIAgent {
   private lastError: Error | null = null;
   private errorCount: number = 0;
   private maxErrors: number;
+  private useFallbackOnly: boolean = false;
   private logger: (message: string, ...args: any[]) => void;
   private logModelUsage: boolean;
   
@@ -287,6 +288,20 @@ export class LLMAIAgent {
   private async handleTeamBuilding(): Promise<void> {
     if (!this.gameState || !this.role) return;
     
+    if (this.useFallbackOnly) {
+      const fallbackTeam = this.getFallbackTeamProposal(
+        this.gameState.game.mission === 1 ? 2 : 3
+      );
+      const teamAction = GameAction.updateTeamMembers({
+        members: fallbackTeam
+      });
+      this.socket.emit('action', teamAction);
+      
+      const proposeAction = GameAction.finishTeamBuilding();
+      this.socket.emit('action', proposeAction);
+      return;
+    }
+    
     try {
       // Get required team size for current mission
       const missionNumber = this.gameState.game.mission;
@@ -332,16 +347,25 @@ export class LLMAIAgent {
           this.logUsage('propose_team', response);
         }
         
+        // First update team members
         const teamAction = GameAction.updateTeamMembers({
           members: teamIndices
         });
         this.socket.emit('action', teamAction);
+        
+        // Then finish team building (propose the team)
+        const proposeAction = GameAction.finishTeamBuilding();
+        this.socket.emit('action', proposeAction);
       } else {
         const fallbackTeam = this.getFallbackTeamProposal(requiredSize);
         const teamAction = GameAction.updateTeamMembers({
           members: fallbackTeam
         });
         this.socket.emit('action', teamAction);
+        
+        // Then finish team building (propose the team)
+        const proposeAction = GameAction.finishTeamBuilding();
+        this.socket.emit('action', proposeAction);
       }
       
     } catch (error) {
@@ -353,6 +377,10 @@ export class LLMAIAgent {
         members: fallbackTeam
       });
       this.socket.emit('action', teamAction);
+      
+      // Then finish team building (propose the team)
+      const proposeAction = GameAction.finishTeamBuilding();
+      this.socket.emit('action', proposeAction);
     }
   }
   
@@ -489,6 +517,9 @@ export class LLMAIAgent {
       });
       this.socket.emit('action', assassinAction);
       
+      const finishAction = GameAction.finishAssassinChoice();
+      this.socket.emit('action', finishAction);
+      
     } catch (error) {
       this.handleError('assassinate', error as Error);
       const fallbackTarget = this.getFallbackAssassinationTarget();
@@ -496,6 +527,9 @@ export class LLMAIAgent {
         player: fallbackTarget
       });
       this.socket.emit('action', assassinAction);
+      
+      const finishAction = GameAction.finishAssassinChoice();
+      this.socket.emit('action', finishAction);
     }
   }
   
@@ -551,6 +585,7 @@ export class LLMAIAgent {
     this.logger(`[LLM AI Error] ${this.playerName} - ${actionType}: ${error.message}`);
     
     if (this.errorCount >= this.maxErrors) {
+      this.useFallbackOnly = true;
       this.logger(`[LLM AI] ${this.playerName} has exceeded max errors, using fallback only`);
     }
   }
