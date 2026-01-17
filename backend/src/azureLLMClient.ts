@@ -96,6 +96,17 @@ export class AzureLLMClient {
   private timeout: number;
   
   constructor(config: AzureLLMConfig) {
+    // Validate required configuration
+    if (!config.apiKey || config.apiKey.trim().length === 0) {
+      throw new Error('Azure OpenAI API key is required. Set AZURE_OPENAI_API_KEY environment variable.');
+    }
+    if (!config.endpoint || config.endpoint.trim().length === 0) {
+      throw new Error('Azure OpenAI endpoint is required. Set AZURE_OPENAI_ENDPOINT environment variable.');
+    }
+    if (!config.deploymentName || config.deploymentName.trim().length === 0) {
+      throw new Error('Azure OpenAI deployment name is required. Set AZURE_OPENAI_DEPLOYMENT_NAME environment variable.');
+    }
+    
     this.apiKey = config.apiKey;
     this.endpoint = config.endpoint;
     this.apiVersion = config.apiVersion || '2024-02-15-preview';
@@ -178,11 +189,31 @@ export class AzureLLMClient {
     const cleanEndpoint = this.endpoint.replace(/\/$/, '');
     const url = `${cleanEndpoint}/openai/deployments/${this.deploymentName}/chat/completions?api-version=${this.apiVersion}`;
     
-    const requestConfig = {
+    // Merge config and options, then convert to API format (snake_case)
+    const mergedConfig = {
       ...this.modelConfig,
-      ...options,
-      messages
+      ...options
     };
+    
+    // Convert camelCase to snake_case for Azure OpenAI API
+    // Note: Newer models (like gpt-5-mini) have limited parameter support:
+    // - Require max_completion_tokens instead of max_tokens
+    // - Only support temperature=1 (default), so omit if not 1
+    // - Do not support top_p, frequency_penalty, or presence_penalty
+    const requestConfig: any = {
+      messages,
+      max_completion_tokens: mergedConfig.maxTokens  // Use max_completion_tokens for newer models
+    };
+    
+    // Only include temperature if it's 1 (default), otherwise omit it
+    // Some models like gpt-5-mini only support the default temperature value
+    if (mergedConfig.temperature === 1) {
+      requestConfig.temperature = 1;
+    }
+    // If temperature is not 1, we omit it to use the model's default
+    
+    // Note: top_p, frequency_penalty, and presence_penalty are not supported by gpt-5-mini
+    // so we omit them from the request
     
     let lastError: Error | null = null;
     
@@ -204,10 +235,31 @@ export class AzureLLMClient {
         const endTime = Date.now();
         const latency = endTime - startTime;
         
+        // Validate response structure
+        if (!response.data || !response.data.choices || response.data.choices.length === 0) {
+          throw new Error(`Invalid response structure: ${JSON.stringify(response.data)}`);
+        }
+        
+        const choice = response.data.choices[0];
+        const content = choice.message?.content || '';
+        const finishReason = choice.finish_reason;
+        
+        // Handle case where response was cut off due to token limit
+        if (!content || content.trim().length === 0) {
+          if (finishReason === 'length') {
+            throw new Error(`Response was truncated due to token limit (max_completion_tokens too low). Consider increasing maxTokens. Finish reason: ${finishReason}`);
+          }
+          throw new Error(`Invalid response: missing or empty message content. Finish reason: ${finishReason || 'unknown'}. Response: ${JSON.stringify(choice)}`);
+        }
+        
         const usage = response.data.usage;
-        const inputTokens = usage.prompt_tokens;
-        const outputTokens = usage.completion_tokens;
-        const totalTokens = usage.total_tokens;
+        if (!usage) {
+          throw new Error(`Invalid response: missing usage information`);
+        }
+        
+        const inputTokens = usage.prompt_tokens || 0;
+        const outputTokens = usage.completion_tokens || 0;
+        const totalTokens = usage.total_tokens || 0;
         
         this.requestHistory.push({
           timestamp: Date.now(),
@@ -227,7 +279,7 @@ export class AzureLLMClient {
         this.totalCost += cost;
         
         return {
-          content: response.data.choices[0].message.content,
+          content: content.trim(),
           usage: {
             inputTokens,
             outputTokens,
@@ -244,25 +296,49 @@ export class AzureLLMClient {
         
         if (axiosError.response) {
           const status = axiosError.response.status;
+          const errorData = (axiosError.response.data as any)?.error;
+          const errorMessage = errorData?.message || JSON.stringify(axiosError.response.data);
+          
           if (status === 401 || status === 403) {
-            throw new Error(`Authentication error: ${(axiosError.response.data as any)?.error?.message || 'Invalid API key'}`);
+            throw new Error(`Authentication error (${status}): ${errorMessage}. Check your AZURE_OPENAI_API_KEY.`);
           }
           if (status === 404) {
-            const errorMsg = (axiosError.response.data as any)?.error?.message || 'Not found';
-            throw new Error(`Azure endpoint not found (404): ${errorMsg}. Check your AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT_NAME. URL: ${url}`);
+            throw new Error(`Azure endpoint not found (404): ${errorMessage}. Check your AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT_NAME. URL: ${url}`);
+          }
+          if (status === 400) {
+            throw new Error(`Bad request (400): ${errorMessage}. Check your request format and parameters.`);
           }
           if (status === 429) {
-            await this.sleep(this.retryDelay * (attempt + 1) * 2);
-            continue;
+            if (attempt < this.maxRetries - 1) {
+              await this.sleep(this.retryDelay * (attempt + 1) * 2);
+              continue;
+            } else {
+              throw new Error(`Rate limit exceeded (429): ${errorMessage}`);
+            }
           }
           if (status >= 500) {
-            await this.sleep(this.retryDelay * (attempt + 1));
-            continue;
+            if (attempt < this.maxRetries - 1) {
+              await this.sleep(this.retryDelay * (attempt + 1));
+              continue;
+            } else {
+              throw new Error(`Server error (${status}): ${errorMessage}`);
+            }
           }
+          
+          // Other HTTP errors
+          throw new Error(`HTTP error (${status}): ${errorMessage}`);
         }
         
+        // Network or other errors
+        if (axiosError.request) {
+          throw new Error(`Network error: No response received. Check your AZURE_OPENAI_ENDPOINT. URL: ${url}`);
+        }
+        
+        // If it's not an axios error, or if we've exhausted retries
         if (attempt < this.maxRetries - 1) {
           await this.sleep(this.retryDelay * (attempt + 1));
+        } else {
+          throw error;
         }
       }
     }

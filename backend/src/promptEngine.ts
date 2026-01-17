@@ -213,7 +213,7 @@ export class PromptEngine {
     const gameContext = this.buildGameContext(gameState, playerRole, playerIndex, visiblePlayers);
     const chatContext = this.buildChatContext(chatHistory);
     
-    const prompt = `${systemPrompt}
+    const systemContent = `${systemPrompt}
 
 ${gameContext}
 
@@ -221,16 +221,17 @@ ${chatContext}
 
 Instructions:
 - Respond naturally to the conversation as a human would
-- Keep responses SHORT (1-2 sentences max) - this is a fast-paced game
+- This is a fast-paced game, so keep responses SHORT (1-2 sentences)
 - If you are evil, be subtle and don't reveal your true nature
 - If you are good, try to help your team while protecting Merlin
 - Consider the game state and what would be strategically helpful
-- Don't repeat what others have said
+- Don't repeat what others have said`;
 
-Generate a chat message that fits the conversation and game situation. Only output the message text, nothing else.`;
+    const userContent = `It is your turn to speak. Generate a chat message that fits the conversation and game situation. Only output the message text, nothing else.`;
 
     return [
-      { role: 'system', content: prompt }
+      { role: 'system', content: systemContent },
+      { role: 'user', content: userContent }
     ];
   }
   

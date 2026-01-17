@@ -170,16 +170,31 @@ export class LLMAIAgent {
         if (this.lastSpeakingTurnIndex !== currentTurnIndex) {
           // Generate and send a chat message
           // Wait a bit to simulate thinking, but send before time expires
-          if (timeRemaining > 2 && timeRemaining <= 8) {
-            // Send message in the middle of our turn (between 2-8 seconds remaining)
-            // This gives us time to think but ensures we send before timeout
-            await this.sleep(this.responseDelay + Math.random() * 1000);
-            await this.generateChatResponse();
-            this.lastSpeakingTurnIndex = currentTurnIndex;
-          } else if (timeRemaining <= 2) {
+          if (timeRemaining > 8) {
+            // Still plenty of time - wait a bit then send
+            await this.sleep(this.responseDelay + Math.random() * 2000);
+            // Re-check it's still our turn after the delay
+            if (this.gameState?.speakingTurn?.currentSpeaker === this.playerIndex && 
+                this.gameState.speakingTurn.turnIndex === currentTurnIndex) {
+              await this.generateChatResponse();
+              this.lastSpeakingTurnIndex = currentTurnIndex;
+            }
+          } else if (timeRemaining > 2) {
+            // Moderate time remaining - send soon
+            await this.sleep(this.responseDelay);
+            // Re-check it's still our turn after the delay
+            if (this.gameState?.speakingTurn?.currentSpeaker === this.playerIndex && 
+                this.gameState.speakingTurn.turnIndex === currentTurnIndex) {
+              await this.generateChatResponse();
+              this.lastSpeakingTurnIndex = currentTurnIndex;
+            }
+          } else {
             // Time is running out - send immediately
-            await this.generateChatResponse();
-            this.lastSpeakingTurnIndex = currentTurnIndex;
+            if (this.gameState?.speakingTurn?.currentSpeaker === this.playerIndex && 
+                this.gameState.speakingTurn.turnIndex === currentTurnIndex) {
+              await this.generateChatResponse();
+              this.lastSpeakingTurnIndex = currentTurnIndex;
+            }
           }
         }
         return;
@@ -240,6 +255,26 @@ export class LLMAIAgent {
       return;
     }
     
+    // Double-check it's still our turn before generating (game state may have changed)
+    if (this.gameState.speakingTurn) {
+      if (this.gameState.speakingTurn.currentSpeaker !== this.playerIndex) {
+        this.logger(`[${this.playerName}] Not our turn anymore (current speaker: ${this.gameState.speakingTurn.currentSpeaker}), skipping chat generation`);
+        return;
+      }
+    }
+    
+    // Check if we should use fallback only
+    if (this.useFallbackOnly) {
+      this.logger(`[${this.playerName}] Using fallback only mode, skipping API request`);
+      const fallbackMessage = this.getFallbackChatResponse();
+      const chatAction = GameAction.newPlayerChatMessage({
+        player: this.playerIndex,
+        message: fallbackMessage
+      });
+      this.socket.emit('action', chatAction);
+      return;
+    }
+    
     try {
       this.logger(`[${this.playerName}] Generating chat response...`);
       
@@ -252,16 +287,34 @@ export class LLMAIAgent {
         this.playerName
       );
       
+      this.logger(`[${this.playerName}] Sending ${messages.length} messages to Azure OpenAI API`);
+      
       const response = await this.llmClient.makeRequest(messages, {
-        maxTokens: 100,
+        maxTokens: 500,  // Increased to 500 to prevent truncation
         temperature: 0.8
       });
       
       const chatMessage = response.content.trim();
+      
+      if (!chatMessage || chatMessage.length === 0) {
+        throw new Error('Received empty response from API');
+      }
+      
       this.logger(`[${this.playerName}] Generated chat message: "${chatMessage}"`);
       
       if (this.logModelUsage) {
         this.logUsage('chat', response);
+      }
+      
+      // Reset error count on successful request
+      this.errorCount = 0;
+      
+      // Double-check it's still our turn before sending (game state may have changed during API call)
+      if (this.gameState.speakingTurn) {
+        if (this.gameState.speakingTurn.currentSpeaker !== this.playerIndex) {
+          this.logger(`[${this.playerName}] Not our turn anymore (current speaker: ${this.gameState.speakingTurn.currentSpeaker}), not sending chat message`);
+          return;
+        }
       }
       
       // Send chat message via Redux action
@@ -274,7 +327,11 @@ export class LLMAIAgent {
       this.socket.emit('action', chatAction);
       
     } catch (error) {
-      this.logger(`[${this.playerName}] Error generating chat response:`, error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger(`[${this.playerName}] Error generating chat response: ${errorMessage}`);
+      if (error instanceof Error) {
+        this.logger(`[${this.playerName}] Error stack:`, error.stack);
+      }
       this.handleError('chat', error as Error);
       const fallbackMessage = this.getFallbackChatResponse();
       const chatAction = GameAction.newPlayerChatMessage({
@@ -320,7 +377,7 @@ export class LLMAIAgent {
       );
       
       const response = await this.llmClient.makeRequest(messages, {
-        maxTokens: 50,
+        maxTokens: 100,  // Increased from 50 to prevent truncation
         temperature: 0.5
       });
       
