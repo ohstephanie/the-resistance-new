@@ -49,6 +49,7 @@ export class LLMAIAgent {
   private visiblePlayers: VisiblePlayer[] = [];
   private gameState: GameState | null = null;
   private chatHistory: Array<{ player: number; content: string }> = [];
+  private lastLoggedMessage: string | null = null; // Track last logged message to prevent duplicates
   
   public llmClient: AzureLLMClient;
   private promptEngine: PromptEngine;
@@ -94,23 +95,35 @@ export class LLMAIAgent {
   }
   
   updateGameState(gameState: GameState): void {
-    this.gameState = gameState;
+    const previousChatLength = this.chatHistory.length;
     
-    // Update chat history from game state
-    this.chatHistory = gameState.chat
+    // Update chat history from game state (limit to last 5 messages to save tokens)
+    const allChatMessages = gameState.chat
       .filter(msg => msg.type === 'player')
       .map(msg => ({
         player: (msg as any).player,
         content: (msg as any).content
       }));
     
-    // Debug: log when we receive chat messages
-    if (gameState.chat.length > 0) {
-      const lastMessage = gameState.chat[gameState.chat.length - 1];
-      if (lastMessage.type === 'player' && (lastMessage as any).player !== this.playerIndex) {
-        this.logger(`[${this.playerName}] Received chat message from player ${(lastMessage as any).player}: "${(lastMessage as any).content}"`);
+    // Only update if chat actually changed (to avoid duplicate logs and processing)
+    if (allChatMessages.length !== previousChatLength) {
+      // Keep only the last 5 messages to reduce token usage
+      this.chatHistory = allChatMessages.slice(-5);
+      
+      // Log only when a new message arrives and it's different from the last logged message
+      if (allChatMessages.length > previousChatLength) {
+        const lastMessage = allChatMessages[allChatMessages.length - 1];
+        const messageKey = `${lastMessage.player}:${lastMessage.content}`;
+        
+        // Only log if this is a genuinely new message (different from last logged)
+        if (lastMessage.player !== this.playerIndex && messageKey !== this.lastLoggedMessage) {
+          this.lastLoggedMessage = messageKey;
+          this.logger(`[${this.playerName}] Received chat message from player ${lastMessage.player}: "${lastMessage.content}"`);
+        }
       }
     }
+    
+    this.gameState = gameState;
   }
   
   async handleAction(action: AnyAction): Promise<void> {
@@ -145,10 +158,8 @@ export class LLMAIAgent {
         return;
       }
       
-      const payload = (action as any).payload;
-      this.logger(`[${this.playerName}] Received chat message from player ${payload.player}: "${payload.message}"`);
-      
       // In turn-based speaking system, AI agents should only speak on their turn
+      // (Chat messages are already logged in updateGameState to avoid duplicates)
       // Don't respond reactively to other players' messages
       // They will be triggered by the tick action when it's their turn
       return;
@@ -168,34 +179,21 @@ export class LLMAIAgent {
         
         // Only send if we haven't already sent a message this turn
         if (this.lastSpeakingTurnIndex !== currentTurnIndex) {
-          // Generate and send a chat message
-          // Wait a bit to simulate thinking, but send before time expires
-          if (timeRemaining > 8) {
-            // Still plenty of time - wait a bit then send
-            await this.sleep(this.responseDelay + Math.random() * 2000);
-            // Re-check it's still our turn after the delay
-            if (this.gameState?.speakingTurn?.currentSpeaker === this.playerIndex && 
-                this.gameState.speakingTurn.turnIndex === currentTurnIndex) {
-              await this.generateChatResponse();
-              this.lastSpeakingTurnIndex = currentTurnIndex;
+          // Set this immediately to prevent multiple calls from queuing up
+          this.lastSpeakingTurnIndex = currentTurnIndex;
+          
+          // Calculate delay to send message near the end of the turn (3 seconds before end to allow for API call time)
+          // If timeRemaining is 10, wait 7 seconds. If timeRemaining is 5, wait 2 seconds, etc.
+          const delayBeforeSend = Math.max(0, (timeRemaining - 3) * 1000); // Convert seconds to milliseconds
+          
+          // Start generating in background, but delay sending until near end of turn
+          this.generateChatResponseWithDelay(delayBeforeSend).catch(error => {
+            // Error already logged in generateChatResponse
+            // Reset turn index on error so we can try again if turn hasn't changed
+            if (this.gameState?.speakingTurn?.turnIndex === currentTurnIndex) {
+              this.lastSpeakingTurnIndex = -1;
             }
-          } else if (timeRemaining > 2) {
-            // Moderate time remaining - send soon
-            await this.sleep(this.responseDelay);
-            // Re-check it's still our turn after the delay
-            if (this.gameState?.speakingTurn?.currentSpeaker === this.playerIndex && 
-                this.gameState.speakingTurn.turnIndex === currentTurnIndex) {
-              await this.generateChatResponse();
-              this.lastSpeakingTurnIndex = currentTurnIndex;
-            }
-          } else {
-            // Time is running out - send immediately
-            if (this.gameState?.speakingTurn?.currentSpeaker === this.playerIndex && 
-                this.gameState.speakingTurn.turnIndex === currentTurnIndex) {
-              await this.generateChatResponse();
-              this.lastSpeakingTurnIndex = currentTurnIndex;
-            }
-          }
+          });
         }
         return;
       }
@@ -213,9 +211,14 @@ export class LLMAIAgent {
         return;
       }
       
-      // Handle voting phase
+      // Handle voting phase (only during 'voting', not 'voting-review')
       if (this.gameState.game.phase === 'voting') {
-        const ourVote = this.gameState.team?.votes[this.playerIndex];
+        // Ensure team exists before trying to vote
+        if (!this.gameState.team) {
+          this.logger(`[${this.playerName}] Voting phase but no team available (phase: ${this.gameState.game.phase})`);
+          return;
+        }
+        const ourVote = this.gameState.team.votes[this.playerIndex];
         if (ourVote === 'none' || ourVote === undefined) {
           await this.sleep(this.responseDelay);
           await this.handleTeamVoting();
@@ -223,13 +226,21 @@ export class LLMAIAgent {
         return;
       }
       
-      // Handle mission phase
+      // Handle mission phase (only during 'mission', not 'mission-review')
       if (this.gameState.game.phase === 'mission') {
-        if (this.gameState.mission && this.gameState.mission.members.includes(this.playerIndex)) {
-          const ourAction = this.gameState.mission.actions[this.playerIndex];
-          if (ourAction === null) {
-            await this.sleep(this.responseDelay);
-            await this.handleMissionVote();
+        if (!this.gameState.mission) {
+          this.logger(`[${this.playerName}] Mission phase but no mission available (phase: ${this.gameState.game.phase})`);
+          return;
+        }
+        if (this.gameState.mission.members.includes(this.playerIndex)) {
+          // Find our index in the members array (actions are indexed by position in members, not player index)
+          const memberIndex = this.gameState.mission.members.indexOf(this.playerIndex);
+          if (memberIndex >= 0 && memberIndex < this.gameState.mission.actions.length) {
+            const ourAction = this.gameState.mission.actions[memberIndex];
+            if (ourAction === null) {
+              await this.sleep(this.responseDelay);
+              await this.handleMissionVote();
+            }
           }
         }
         return;
@@ -249,6 +260,14 @@ export class LLMAIAgent {
     
   }
   
+  private async generateChatResponseWithDelay(delayMs: number): Promise<void> {
+    // Wait until near the end of the turn before generating and sending
+    if (delayMs > 0) {
+      await this.sleep(delayMs);
+    }
+    return this.generateChatResponse();
+  }
+
   private async generateChatResponse(): Promise<void> {
     if (!this.gameState || !this.role) {
       this.logger(`[${this.playerName}] Cannot generate chat: gameState=${!!this.gameState}, role=${this.role}`);
@@ -287,16 +306,29 @@ export class LLMAIAgent {
         this.playerName
       );
       
-      this.logger(`[${this.playerName}] Sending ${messages.length} messages to Azure OpenAI API`);
+      // Log the actual prompt content for debugging
+      const promptContent = messages.map(m => `${m.role}: ${m.content}`).join(' | ');
+      this.logger(`[${this.playerName}] Sending ${messages.length} messages to Azure OpenAI API. Content: "${promptContent}"`);
       
       const response = await this.llmClient.makeRequest(messages, {
-        maxTokens: 500,  // Increased to 500 to prevent truncation
+        maxTokens: 200,  // Increased for strategic reasoning and team suggestions
         temperature: 0.8
       });
       
       const chatMessage = response.content.trim();
       
+      // Handle empty responses
       if (!chatMessage || chatMessage.length === 0) {
+        // Check if input was actually too long (more than 100 tokens suggests input issue)
+        const inputTokens = response.usage?.inputTokens || 0;
+        if (response.finishReason === 'length' && inputTokens > 100) {
+          // Input was too long - use fallback immediately
+          this.logger(`[${this.playerName}] Input prompt too long (${inputTokens} tokens), using fallback`);
+          throw new Error('Input prompt consumed entire context window - using fallback');
+        }
+        // Otherwise, empty response might be due to model confusion or output truncation
+        // Try with a more explicit prompt or use fallback
+        this.logger(`[${this.playerName}] Received empty response (finishReason: ${response.finishReason}, inputTokens: ${inputTokens}), using fallback`);
         throw new Error('Received empty response from API');
       }
       
@@ -377,7 +409,7 @@ export class LLMAIAgent {
       );
       
       const response = await this.llmClient.makeRequest(messages, {
-        maxTokens: 100,  // Increased from 50 to prevent truncation
+        maxTokens: 100,  // Increased for team proposals
         temperature: 0.5
       });
       
@@ -444,6 +476,17 @@ export class LLMAIAgent {
   private async handleTeamVoting(): Promise<void> {
     if (!this.gameState || !this.role) return;
     
+    // Double-check that team exists and we're in voting phase
+    if (!this.gameState.team) {
+      this.logger(`[${this.playerName}] Cannot vote: no team available (phase: ${this.gameState.game.phase})`);
+      return;
+    }
+    
+    if (this.gameState.game.phase !== 'voting') {
+      this.logger(`[${this.playerName}] Cannot vote: not in voting phase (current phase: ${this.gameState.game.phase})`);
+      return;
+    }
+    
     try {
       const messages = this.promptEngine.generateTeamVotePrompt(
         this.gameState,
@@ -454,7 +497,7 @@ export class LLMAIAgent {
       );
       
       const response = await this.llmClient.makeRequest(messages, {
-        maxTokens: 10,
+        maxTokens: 50,  // Increased for voting (need "APPROVE" or "REJECT")
         temperature: 0.3
       });
       
@@ -485,6 +528,23 @@ export class LLMAIAgent {
   private async handleMissionVote(): Promise<void> {
     if (!this.gameState || !this.role) return;
     
+    // Double-check that mission exists and we're in mission phase
+    if (!this.gameState.mission) {
+      this.logger(`[${this.playerName}] Cannot vote on mission: no mission available (phase: ${this.gameState.game.phase})`);
+      return;
+    }
+    
+    if (this.gameState.game.phase !== 'mission') {
+      this.logger(`[${this.playerName}] Cannot vote on mission: not in mission phase (current phase: ${this.gameState.game.phase})`);
+      return;
+    }
+    
+    // Verify we're actually on the mission team
+    if (!this.gameState.mission.members.includes(this.playerIndex)) {
+      this.logger(`[${this.playerName}] Cannot vote on mission: not on mission team`);
+      return;
+    }
+    
     try {
       const canFail = this.team === 'spy';
       
@@ -498,7 +558,7 @@ export class LLMAIAgent {
       );
       
       const response = await this.llmClient.makeRequest(messages, {
-        maxTokens: 10,
+        maxTokens: 50,  // Increased for voting (need "APPROVE" or "REJECT")
         temperature: 0.3
       });
       

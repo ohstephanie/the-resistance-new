@@ -32,6 +32,7 @@ export interface LLMResponse {
   cost: number;
   latency: number;
   model: string;
+  finishReason?: string;
 }
 
 export interface UsageStats {
@@ -120,7 +121,7 @@ export class AzureLLMClient {
     
     this.modelConfig = {
       temperature: config.temperature || 0.7,
-      maxTokens: config.maxTokens || 500,
+      maxTokens: config.maxTokens || 200,  // Default for gpt-5-chat and similar models
       topP: 0.95,
       frequencyPenalty: 0.0,
       presencePenalty: 0.0
@@ -243,16 +244,45 @@ export class AzureLLMClient {
         const choice = response.data.choices[0];
         const content = choice.message?.content || '';
         const finishReason = choice.finish_reason;
+        const usage = response.data.usage;
         
-        // Handle case where response was cut off due to token limit
+        // Handle empty responses
         if (!content || content.trim().length === 0) {
+          const inputTokens = usage?.prompt_tokens || 0;
+          const totalTokens = usage?.total_tokens || 0;
+          
           if (finishReason === 'length') {
-            throw new Error(`Response was truncated due to token limit (max_completion_tokens too low). Consider increasing maxTokens. Finish reason: ${finishReason}`);
+            // Check if input was actually too long (more than 100 tokens suggests input issue)
+            if (inputTokens > 100) {
+              // Input consumed entire context window - prompt is too long
+              console.error(`[AzureLLMClient] Input prompt consumed entire context window. Input tokens: ${inputTokens}, Total tokens: ${totalTokens}, Messages: ${JSON.stringify(messages.map(m => ({ role: m.role, contentLength: m.content.length })))}`);
+            } else {
+              // Output was truncated, but input was small - this is a different issue
+              console.warn(`[AzureLLMClient] Output truncated (finishReason: length) but input was small (${inputTokens} tokens). Total: ${totalTokens}. This might indicate a context window limit or model issue.`);
+            }
+            // Return empty content with finishReason so caller can handle gracefully
+            return {
+              content: '',
+              usage: {
+                inputTokens,
+                outputTokens: 0,
+                totalTokens
+              },
+              cost: 0,
+              latency: endTime - startTime,
+              model: this.deploymentName,
+              finishReason: 'length'
+            };
           }
-          throw new Error(`Invalid response: missing or empty message content. Finish reason: ${finishReason || 'unknown'}. Response: ${JSON.stringify(choice)}`);
+          throw new Error(`Invalid response: missing or empty message content. Finish reason: ${finishReason || 'unknown'}. Input tokens: ${inputTokens}. Response: ${JSON.stringify(choice)}`);
         }
         
-        const usage = response.data.usage;
+        // If truncated but has content, log a warning but continue
+        if (finishReason === 'length' && content.trim().length > 0) {
+          // Content was truncated but we have something - use it
+          // This is acceptable for short responses like "APPROVE" or "[0,2,3]"
+        }
+        
         if (!usage) {
           throw new Error(`Invalid response: missing usage information`);
         }
@@ -287,7 +317,8 @@ export class AzureLLMClient {
           },
           cost,
           latency,
-          model: this.deploymentName
+          model: this.deploymentName,
+          finishReason
         };
         
       } catch (error) {

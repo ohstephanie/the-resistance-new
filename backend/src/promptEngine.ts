@@ -5,6 +5,7 @@
  */
 
 import { GameState, Role, GamePhase } from "common-modules";
+import { MissionPlayerCount } from "common-modules";
 
 export interface VisiblePlayer {
   playerId: number;
@@ -18,118 +19,14 @@ export class PromptEngine {
   
   constructor() {
     this.systemPrompts = {
-      merlin: `You are Merlin, the wise wizard of Camelot. You can see the evil players (except Mordred), 
-      but must remain hidden. You guide the forces of good subtly, without revealing your identity. 
-      
-      Assuming the role of Merlin necessitates a masterful balancing act: one must possess intimate knowledge of all minions of evil (save for 
-      Mordred, in classic gameplay) yet be unable to divulge this information outright. The true challenge lies in covertly 
-      shepherding the forces of good toward triumph, all while avoiding detection and a potential assassination by the forces 
-      of evil's assassin at the game's conclusion. More intricate still is the necessity to counteract the deceits of Morgana 
-      and to garner the trust of Percival. Morgana vies to mimic your persona, leading the righteous astray, whereas Percival 
-      endeavours to pierce through the pretense and uncover the verity.
-      
-      General Tips:
-      - Be cautious with your knowledge: While Merlin knows who the evil players are, revealing this directly can risk being assassinated. Your goal is to aid the Arthurian side subtly.
-      - Use hints wisely: Mastering the art of dropping subtle hints to your team without being too obvious is crucial for Merlin.
-      - Be careful with accusations: Accusing minions of evil too accurately or quickly can reveal your role. Balance is key.
-      - Maintain balance in your gameplay: It is important to not appear too knowledgeable. Sometimes, making deliberate mistakes or staying silent can throw evil players off.
-      - Pay attention to the assassin: Remember, an assassin will try to identify Merlin at the end of the game if good prevails. Being too obvious with your hints could lead to your downfall.
-      
-      Strategic Tips:
-      - Strategize your silence: Sometimes, the best way to conceal your role is by withholding comments, especially in the early stages of the game.
-      - Reveal evil players gradually: Guide your allies to the truth gradually, avoiding harsh accusations.
-      - Utilize ambiguity: Make comments that could be interpreted in multiple ways, keeping the evil players guessing.
-      - Build trust: Apart from revealing evil, convincing other players of your allegiance to good is vital. Establishing trust can influence team decisions.
-      - Support your allies: Sometimes it is more effective to back up correct suggestions from others than to constantly push your own ideas.`,
-      
-      percival: `You are Percival, a loyal knight of the Round Table. You can see Merlin and Morgana, 
-      but cannot tell which is which. You must help the good team while protecting Merlin's identity. 
-      
-      Percival's role is to protect and correctly identify Merlin to prevent Merlin's assassination by 
-      the Minions of Mordred. Percival sees Merlin and Morgana at the beginning of the game but must 
-      discern which is which without revealing their identities to others.
-      
-      General Tips:
-      - Understand Your Role: Knowing that you are one of Merlin's primary protectors, your main goal is to obscure Merlin's identity.
-      - Pay Attention to Behavior: Observe the behaviors and suggestions of the two players identified as Merlin and Morgana. Try to deduce who the real Merlin is based on how they guide the team.
-      - Be Subtle: When defending or following the advice of who you believe is Merlin, be subtle. Direct defense of Merlin can lead to Morgana and the minions of Mordred identifying and later assassinating Merlin.
-      
-      Strategic Tips:
-      - Create Ambiguity: Sometimes, acting unsure or casting doubt can help protect Merlin's identity. If evil players are unsure who Merlin is, it's harder for them to win the game by assassinating Merlin.
-      - Communicate Through Votes: Voting patterns can be a subtle way to communicate. Percival can show agreement or disagreement with Merlin's suspected choices through voting, without openly discussing it.
-      - Guide Quietly: Percival often knows who the good players are. Guide them towards the right decisions subtly without exposing Merlin or yourself.
-      - Protect Merlin to the End: In the end game, be ready to take suspicion upon yourself to protect Merlin's identity, especially if you have established yourself as a trusted good player.`,
-      
-      loyal_servant: `You are a Loyal Servant of Arthur, a faithful member of the Round Table. 
-      You know nothing of other players' roles, but you must work with your fellow good players to complete missions.
-      
-      General Tips:
-      - Role: You belong to the 'Good' team and your task is to assist in successfully completing three out of five missions.
-      - Knowledge: At the game's start, you have no information about which players are on your side and which are against you.
-      - Objective: Your ultimate goal is to ensure the victory of 'Good' by helping to choose trustworthy participants for missions and preventing the 'Evil' from successfully completing missions.
-      
-      Strategic Tips:
-      - Active Observation: Pay close attention to the actions and behavior of other players. How someone votes or comments on team proposals can give vital clues.
-      - Communication: Communicate effectively with other players but do so cautiously to not disclose valuable information to 'Evil'. Engage in dialogues, ask questions, and express your doubts or confidence regarding certain players.
-      - Voting Strategy: Use your vote as a tool to express trust or distrust towards a team's composition. Voting against a team proposal can stimulate further discussion and help reveal suspicious patterns.
-      - Balanced Activity: Find a balance between participating actively in discussions and observing. Being too active can make you a target for 'Evil', whereas being too passive can allow 'Evil' to dictate the game's flow.
-      - Form Alliances: Gradually form alliances with players you are confident are allies. Mutual support and information exchange are key to identifying and opposing evil characters.
-      - Use Exclusions: Try to build your reasoning on excluding unreliable players from missions, progressively narrowing down the circle of suspects.
-      - Playing as a Servant, remember the importance of teamwork and collective strategy. Your job is not just to help pick the right teams for missions but also to protect the reputation of 'Good' players, easing the path towards victory.`,
-      
-      morgana: `You are Morgana, the evil enchantress. You appear as Merlin to Percival, and you 
-      can see your fellow evil players. Your goal is to sabotage missions while remaining undetected. 
-      
-      Playing as Morgana revolves around deception, specifically making yourself seem like Merlin to confuse 
-      the forces of good. You should aim to bewilder Percival not only through your actions but also by paying 
-      close attention to how Merlin might be guiding the good forces. Blending in as Merlin could lead Percival 
-      astray, giving the forces of evil an upper hand.
-      
-      General Tips:
-      - Master the art of deception: Use your actions and words to mimic the role of Merlin, leading the good players away from the truth.
-      - Create confusion among good players: Strategic disinformation can sow doubt and hinder their decision-making.
-      - Coordinate with evil players discreetly: Work together with your evil teammates, but do so cautiously to avoid raising suspicion.
-      - Stay composed: Even if suspicion falls on you, keeping a calm and collected demeanor can help dissuade others from believing they've correctly identified you.
-      - Adapt your strategy: Be reactive to the game's progression and ready to change tactics to keep the forces of good guessing.
-      
-      Strategic Tips:
-      - Emphasize plausible deniability: Make statements that help your case without committing too strongly to any particular course that could expose you.
-      - Divert attention gracefully: If you feel the focus is turning towards you, deftly redirect the conversation or suspicion elsewhere.
-      - Imitate Merlin's concern: Show apparent concern for the success of the good team while discreetly guiding them towards failure.
-      - Question others: Ask strategic questions that make others reveal more about their roles and strategies, which you can then use to your advantage.
-      - Fake trustworthiness: Building a facade of trustworthiness can empower your misleading suggestions, making them more likely to be followed.
-      - Thriving as Morgana requires a fine balance between assertiveness and subtlety. Your ability to manipulate the narrative and influence both evil and good players significantly affects your team's chance of victory. Embrace the challenge and enjoy manoeuvring through Avalon's shadowy waters.`,
-      
-      assassin: `You are the Assassin, a deadly agent of evil. You can see your fellow evil players and must 
-      help them fail missions. At the end, if the good team wins three missions, you get a chance to try and identify Merlin.
-      If you succeed, you assassinate Merlin and the evil team wins. You must blend in with the good players.`,
-      
-      mordred: `You are Mordred, the hidden traitor. You are evil but hidden from Merlin's sight. You can see 
-      your fellow evil players and must help them fail missions. You must blend in with the good players.
-      
-      Playing as Mordred gives you the unique advantage of being unknown to Merlin and leading the minions of evil. 
-      Your objective is to disrupt the forces of good and ensure that evil prevails, all while maintaining your disguise as a loyal ally.`,
-      
-      oberon: `You are Oberon, the isolated evil player. You cannot see your fellow evil players, and they cannot 
-      see you. You must work alone to sabotage missions. You must blend in with the good players.
-      
-      Playing as Oberon presents unique challenges as you are a Minion of Evil, but you do not know the identities of 
-      your fellow minions, and they do not know you. You are tasked with disrupting the forces of good while navigating 
-      the game with limited information
-      
-      General Tips:
-      - Embrace your mystery: Use your unknown status to create confusion among all players, both good and evil.
-      - Observe closely: Pay attention to the behavior and decisions of other players to try and deduce the identities of your fellow minions.
-      - Act independently: Without direct coordination from other minions, make moves that you believe will benefit the evil side.
-      - Mislead subtly: Make statements and take actions that sow doubt among the good players, without revealing your true allegiance.
-      - Take risks: You may need to make bold moves to gain the trust of either side and disrupt the plans of the good players.
-
-      Strategic Tips:
-      - Create uncertainty: Always aim to destabilize the confidence that good players have in one another.
-      - Be unpredictable: Vary your gameplay to avoid any patterns that could reveal your role as Oberon.
-      - Listen for clues: Your fellow evil players may inadvertently reveal themselves; use this to your advantage to collaborate indirectly.
-      - Avoid drawing attention: A too-active playstyle may draw suspicion. Instead, focus on making key plays that can tilt the game's outcome.
-      - Playing as Oberon requires cunning, adaptability, and a flair for deception. Your unpredictability is an asset that, if used wisely, can turn the tides of the game. Confuse, deceive, and scheme your way to victory for evil!.`
+      merlin: `You are Merlin, a powerful wizard on the good team. You can see all evil players except Mordred. Your goal is to guide the good team to victory by subtly influencing team selection and voting, but you must never reveal your identity or the evil team will assassinate you at the end. Use your knowledge wisely and speak carefully.`,
+      percival: `You are Percival, a loyal knight on the good team. You can see Merlin and Morgana, but you cannot tell which is which - one appears as the other. Your goal is to help the good team succeed while protecting the real Merlin. Be cautious about revealing what you know.`,
+      loyal_servant: `You are a Loyal Servant of Arthur, a member of the good team with no special abilities. You must use your wits to deduce who is good and who is evil based on voting patterns, team proposals, and conversations. Help the good team succeed in missions.`,
+      morgana: `You are Morgana, an evil sorceress on the spy team. You appear as Merlin to Percival, which can confuse the good team. You can see other evil players. Your goal is to sabotage missions subtly while avoiding detection. Blend in with the good team and vote against missions when possible.`,
+      assassin: `You are the Assassin, a deadly spy on the evil team. You can see other evil players. Your goal is to sabotage missions and help evil win. If the good team wins 3 missions, you will have one chance to assassinate Merlin - if you succeed, evil wins. Be subtle in your sabotage.`,
+      mordred: `You are Mordred, an evil spy hidden from Merlin. You can see other evil players, but Merlin cannot see you. Your goal is to sabotage missions while remaining undetected. Use your hidden status to your advantage.`,
+      oberon: `You are Oberon, an evil spy who works alone. You cannot see other evil players, and they cannot see you. Your goal is to sabotage missions, but you must figure out who your allies are through observation. Be careful not to accidentally work against your own team.`,
+      agent: `You are an agent playing The Resistance. Use player names (not P1, P2, etc) when referring to others. Make strategic decisions based on the game state and conversations.`
     };
   }
   
@@ -146,56 +43,35 @@ export class PromptEngine {
       m.actions.every(a => a === 'success') ? 'SUCCESS' : 'FAIL'
     );
     
-    let context = `You are playing Avalon/The Resistance, a game of hidden roles and social deduction set in medieval Camelot.\n\n`;
-    context += `Your Role: ${roleInfo.name}\n`;
-    context += `Your Team: ${roleInfo.team}\n`;
-    context += `Your Abilities: ${roleInfo.abilities}\n`;
-    context += `Your Player Index: ${playerIndex}\n\n`;
+    let context = `Role: ${roleInfo.name} (${roleInfo.team}). ${roleInfo.abilities}\n`;
+    context += `Mission: ${missionNumber}. Phase: ${phase}. Results: ${missionResults.join(', ') || 'None'}\n`;
     
     if (visiblePlayers.length > 0) {
-      context += `Players you can see:\n`;
-      visiblePlayers.forEach(p => {
-        context += `- ${p.name} (Player ${p.playerId}): ${p.reason}\n`;
-      });
-      context += `\n`;
+      context += `Visible: ${visiblePlayers.map(p => `P${p.playerId}(${p.name})`).join(', ')}\n`;
     }
-    
-    context += `Game Progress:\n`;
-    context += `- Current Mission: ${missionNumber}\n`;
-    context += `- Current Phase: ${phase}\n`;
-    context += `- Mission Results: ${missionResults.join(', ') || 'None yet'}\n`;
     
     if (gameState.team) {
-      const leaderName = gameState.player.names[gameState.team.leader];
-      context += `- Current Team Leader: ${leaderName} (Player ${gameState.team.leader})\n`;
-      context += `- Proposed Team: ${gameState.team.members.map(i => gameState.player.names[i]).join(', ')}\n`;
+      context += `Team: ${gameState.team.members.map(i => gameState.player.names[i]).join(', ')}\n`;
     }
     
-    context += `- All Players: ${gameState.player.names.map((n, i) => `${n} (${i})`).join(', ')}\n\n`;
-    
-    if (phase === 'team-building') {
-      context += `Current Phase: Team Building - The leader must select players for the mission.\n`;
-    } else if (phase === 'voting') {
-      context += `Current Phase: Voting - All players must vote to approve or reject the proposed team.\n`;
-    } else if (phase === 'mission') {
-      context += `Current Phase: Mission - Team members must vote success or fail.\n`;
-    } else if (phase === 'finished-assassinate') {
-      context += `Current Phase: Assassination - The Assassin must choose a target.\n`;
-    }
+    context += `Players: ${gameState.player.names.map((n, i) => `${i}:${n}`).join(', ')}\n`;
     
     return context;
   }
   
-  buildChatContext(chatHistory: Array<{ player: number; content: string }>, maxMessages: number = 10): string {
+  buildChatContext(chatHistory: Array<{ player: number; content: string }>, gameState?: GameState, maxMessages: number = 5): string {
     if (!chatHistory || chatHistory.length === 0) {
       return 'No previous chat messages.';
     }
     
+    // Chat history is already limited to 5 in updateGameState, so just use it directly
     const recentMessages = chatHistory.slice(-maxMessages);
-    let context = 'Recent chat messages:\n';
+    let context = 'Recent chat:\n';
     
     recentMessages.forEach(msg => {
-      context += `Player ${msg.player}: "${msg.content}"\n`;
+      // Use player name if gameState is available, otherwise use index
+      const playerName = gameState?.player.names[msg.player] || `player${msg.player}`;
+      context += `${playerName}: "${msg.content}"\n`;
     });
     
     return context;
@@ -211,27 +87,105 @@ export class PromptEngine {
   ): Array<{ role: string; content: string }> {
     const systemPrompt = this.systemPrompts[playerRole] || this.systemPrompts.agent;
     const gameContext = this.buildGameContext(gameState, playerRole, playerIndex, visiblePlayers);
-    const chatContext = this.buildChatContext(chatHistory);
+    const chatContext = this.buildChatContext(chatHistory, gameState, 5);
+    
+    // Calculate required team size for current mission
+    const missionNumber = gameState.game.mission || 1;
+    const numPlayers = gameState.player.names.length;
+    const requiredTeamSize = MissionPlayerCount[numPlayers]?.[missionNumber - 1] || 2;
+    
+    // Build visible players info if available
+    let visibleInfo = '';
+    if (visiblePlayers.length > 0) {
+      visibleInfo = `\n\nWhat you know:\n${visiblePlayers.map(p => `- ${gameState.player.names[p.playerId]} (${p.reason})`).join('\n')}`;
+    }
+    
+    const allPlayers = gameState.player.names.map((name, idx) => `${idx}: ${name}`).join(', ');
+    
+    // Build mission results summary with analysis
+    const missionResults = gameState.missionHistory.map((m, idx) => {
+      const result = m.actions.every(a => a === 'success') ? 'SUCCESS' : 'FAIL';
+      const failCount = m.actions.filter(a => a === 'fail').length;
+      return `Mission ${idx + 1}: ${result}${failCount > 0 ? ` (${failCount} fail${failCount > 1 ? 's' : ''})` : ''}`;
+    });
+    const resultsText = missionResults.length > 0 ? missionResults.join(', ') : 'No missions completed yet';
+    
+    // Analyze previous results for strategic insights
+    let strategicAnalysis = '';
+    if (gameState.missionHistory.length > 0) {
+      const successCount = gameState.missionHistory.filter(m => m.actions.every(a => a === 'success')).length;
+      const failCount = gameState.missionHistory.filter(m => m.actions.some(a => a === 'fail')).length;
+      strategicAnalysis = `\n\nSTRATEGIC ANALYSIS:\n- ${successCount} mission(s) succeeded, ${failCount} failed\n`;
+      
+      // Analyze which players were on failed missions
+      const suspiciousPlayers = new Set<number>();
+      gameState.missionHistory.forEach((mission, idx) => {
+        if (mission.actions.some(a => a === 'fail')) {
+          mission.members.forEach(member => suspiciousPlayers.add(member));
+        }
+      });
+      
+      if (suspiciousPlayers.size > 0) {
+        const suspiciousNames = Array.from(suspiciousPlayers).map(i => gameState.player.names[i]).join(', ');
+        strategicAnalysis += `- Players on failed missions: ${suspiciousNames}\n`;
+      }
+      
+      // Analyze voting patterns from team history
+      if (gameState.teamHistory.length > 0) {
+        const recentVotes = gameState.teamHistory.slice(-3);
+        strategicAnalysis += `- Recent voting: ${recentVotes.map(t => {
+          const approveCount = t.votes.filter(v => v === 'accept').length;
+          const rejectCount = t.votes.filter(v => v === 'reject').length;
+          return `${approveCount}A/${rejectCount}R`;
+        }).join(', ')}\n`;
+      }
+    }
+    
+    // Build team suggestion guidance based on role knowledge
+    let teamGuidance = '';
+    if (visiblePlayers.length > 0) {
+      const knownGood = visiblePlayers.filter(p => p.reason.includes('good') || p.reason.includes('merlin') || p.reason.includes('percival')).map(p => gameState.player.names[p.playerId]);
+      const knownEvil = visiblePlayers.filter(p => p.reason.includes('evil') || p.reason.includes('spy')).map(p => gameState.player.names[p.playerId]);
+      
+      if (knownGood.length > 0 || knownEvil.length > 0) {
+        teamGuidance = `\n\nYOUR STRATEGIC KNOWLEDGE:\n`;
+        if (knownGood.length > 0) {
+          teamGuidance += `- Players you trust (likely good): ${knownGood.join(', ')}\n`;
+        }
+        if (knownEvil.length > 0) {
+          teamGuidance += `- Players you know are evil: ${knownEvil.join(', ')} - avoid them on teams!\n`;
+        }
+        teamGuidance += `- Based on this, suggest who should be on the team for Mission ${missionNumber}.\n`;
+      }
+    }
     
     const systemContent = `${systemPrompt}
 
-${gameContext}
+${gameContext}${visibleInfo}
 
-${chatContext}
+CURRENT SITUATION:
+- Mission ${missionNumber} (Round ${missionNumber}) - THIS IS THE CURRENT MISSION
+- Team size needed: ${requiredTeamSize} players
+- Previous results: ${resultsText}
+- Current phase: ${gameState.game.phase}
 
-Instructions:
-- Respond naturally to the conversation as a human would
-- This is a fast-paced game, so keep responses SHORT (1-2 sentences)
-- If you are evil, be subtle and don't reveal your true nature
-- If you are good, try to help your team while protecting Merlin
-- Consider the game state and what would be strategically helpful
-- Don't repeat what others have said`;
+All players: ${allPlayers}
 
-    const userContent = `It is your turn to speak. Generate a chat message that fits the conversation and game situation. Only output the message text, nothing else.`;
+${chatContext}${strategicAnalysis}${teamGuidance}
+
+IMPORTANT: You are speaking during Mission ${missionNumber}. Do NOT reference "first mission" or "mission one" unless this is actually Mission 1.
+
+YOUR TASK: Generate a strategic chat message (20-30 words) that:
+1. States your reasoning based on previous mission results and what you know
+2. Suggests specific players who should be on the team (use player names, not P1/P2)
+3. References voting patterns or suspicious behavior if relevant
+4. Fits your role and helps your team's strategy
+
+Be strategic and explicit. Use player names. Reference previous results.`;
 
     return [
       { role: 'system', content: systemContent },
-      { role: 'user', content: userContent }
+      { role: 'user', content: 'What do you say?' }
     ];
   }
   
@@ -245,30 +199,69 @@ Instructions:
   ): Array<{ role: string; content: string }> {
     const systemPrompt = this.systemPrompts[playerRole] || this.systemPrompts.agent;
     const gameContext = this.buildGameContext(gameState, playerRole, playerIndex, visiblePlayers);
-    const chatContext = this.buildChatContext(chatHistory);
+    const chatContext = this.buildChatContext(chatHistory, gameState, 3);
     
-    const playerList = gameState.player.names.map((name, idx) => 
-      `${idx}: ${name}${visiblePlayers.some(v => v.playerId === idx) ? ' (you can see this player)' : ''}`
-    ).join('\n');
+    let visibleInfo = '';
+    if (visiblePlayers.length > 0) {
+      visibleInfo = `\n\nWhat you know:\n${visiblePlayers.map(p => `- ${gameState.player.names[p.playerId]} (${p.reason})`).join('\n')}`;
+    }
+    
+    const playerList = gameState.player.names.map((name, idx) => `${idx}:${name}`).join(', ');
+    const missionNumber = gameState.game.mission || 1;
+    
+    // Analyze previous mission results
+    let missionAnalysis = '';
+    if (gameState.missionHistory.length > 0) {
+      const failedMissions = gameState.missionHistory.filter(m => m.actions.some(a => a === 'fail'));
+      if (failedMissions.length > 0) {
+        const suspiciousPlayers = new Set<number>();
+        failedMissions.forEach(mission => {
+          mission.members.forEach(member => suspiciousPlayers.add(member));
+        });
+        if (suspiciousPlayers.size > 0) {
+          const suspiciousNames = Array.from(suspiciousPlayers).map(i => `${i}:${gameState.player.names[i]}`).join(', ');
+          missionAnalysis = `\n\nCRITICAL: Players who were on failed missions: ${suspiciousNames}\n- These players are suspicious and should be avoided unless you know they're good.\n`;
+        }
+      }
+    }
+    
+    // Build trust list based on visible players
+    let trustGuidance = '';
+    if (visiblePlayers.length > 0) {
+      const trusted = visiblePlayers.filter(p => p.reason.includes('good') || p.reason.includes('merlin') || p.reason.includes('percival')).map(p => `${p.playerId}:${gameState.player.names[p.playerId]}`);
+      const untrusted = visiblePlayers.filter(p => p.reason.includes('evil') || p.reason.includes('spy')).map(p => `${p.playerId}:${gameState.player.names[p.playerId]}`);
+      
+      if (trusted.length > 0 || untrusted.length > 0) {
+        trustGuidance = '\n\nYOUR KNOWLEDGE:\n';
+        if (trusted.length > 0) {
+          trustGuidance += `- Trusted players (likely good): ${trusted.join(', ')}\n`;
+        }
+        if (untrusted.length > 0) {
+          trustGuidance += `- Known evil players (AVOID): ${untrusted.join(', ')}\n`;
+        }
+      }
+    }
     
     const prompt = `${systemPrompt}
 
-${gameContext}
+${gameContext}${visibleInfo}
 
-${chatContext}
+${chatContext}${missionAnalysis}${trustGuidance}
 
-Available Players:
-${playerList}
+You must propose a team of exactly ${requiredSize} players for Mission ${missionNumber}.
 
-You are the current leader and must select exactly ${requiredSize} players for Mission ${gameState.game.mission}.
+Available players: ${playerList}
 
-Instructions:
-- Select players strategically based on your role and knowledge
-- If you are good, try to select players you believe are good
-- If you are evil, you may want to include yourself or other evil players
-- Consider the mission results so far and voting patterns
-- Respond with ONLY a JSON array of player indices, e.g., [0, 2, 3]
-- Do not include any explanation, only the JSON array`;
+STRATEGIC CONSIDERATIONS:
+- Your role and what you know about other players
+- Previous mission results: which players were on failed missions?
+- Voting patterns: who has been rejecting teams?
+- Recent conversations: what have players been saying?
+- Strategic goals: ${playerRole === 'merlin' || playerRole === 'percival' || playerRole === 'loyal_servant' ? 'Select trustworthy players to ensure mission success' : 'Include yourself or other evil players to sabotage if needed'}
+
+Think strategically about who should be on this team based on all available information.
+
+Output ONLY a JSON array of player indices, like [0,2,3] or [1,4]. Do not include any explanation.`;
 
     return [
       { role: 'system', content: prompt }
@@ -283,32 +276,108 @@ Instructions:
     chatHistory: Array<{ player: number; content: string }>
   ): Array<{ role: string; content: string }> {
     const systemPrompt = this.systemPrompts[playerRole] || this.systemPrompts.agent;
-    const gameContext = this.buildGameContext(gameState, playerRole, playerIndex, visiblePlayers);
-    const chatContext = this.buildChatContext(chatHistory);
     
     if (!gameState.team) {
       throw new Error('No team proposal available');
     }
     
-    const teamNames = gameState.team.members.map(idx => gameState.player.names[idx]).join(', ');
+    const gameContext = this.buildGameContext(gameState, playerRole, playerIndex, visiblePlayers);
+    const chatContext = this.buildChatContext(chatHistory, gameState, 3);
+    
+    let visibleInfo = '';
+    if (visiblePlayers.length > 0) {
+      visibleInfo = `\n\nWhat you know:\n${visiblePlayers.map(p => `- ${gameState.player.names[p.playerId]} (${p.reason})`).join('\n')}`;
+    }
+    
+    const proposedTeam = gameState.team.members.map(i => `${i}:${gameState.player.names[i]}`).join(', ');
+    const proposer = gameState.player.names[gameState.team.leader] || `Player ${gameState.team.leader}`;
+    const proposerIndex = gameState.team.leader;
+    const missionNumber = gameState.game.mission || 1;
+    const numPlayers = gameState.player.names.length;
+    const requiredTeamSize = MissionPlayerCount[numPlayers]?.[missionNumber - 1] || 2;
+    
+    // Check if this player is the proposer
+    const isProposer = playerIndex === proposerIndex;
+    const proposerNote = isProposer 
+      ? `\n\nIMPORTANT: YOU proposed this team. You should vote APPROVE unless you made a mistake.`
+      : '';
+    
+    // Build mission results summary with analysis
+    const missionResults = gameState.missionHistory.map((m, idx) => {
+      const result = m.actions.every(a => a === 'success') ? 'SUCCESS' : 'FAIL';
+      const failCount = m.actions.filter(a => a === 'fail').length;
+      return `Mission ${idx + 1}: ${result}${failCount > 0 ? ` (${failCount} fail${failCount > 1 ? 's' : ''})` : ''}`;
+    });
+    const resultsText = missionResults.length > 0 ? missionResults.join(', ') : 'No missions completed yet';
+    
+    // Analyze if any proposed team members were on failed missions
+    let teamAnalysis = '';
+    const proposedTeamIndices = gameState.team.members;
+    const suspiciousOnTeam: number[] = [];
+    gameState.missionHistory.forEach(mission => {
+      if (mission.actions.some(a => a === 'fail')) {
+        mission.members.forEach(member => {
+          if (proposedTeamIndices.includes(member) && !suspiciousOnTeam.includes(member)) {
+            suspiciousOnTeam.push(member);
+          }
+        });
+      }
+    });
+    
+    if (suspiciousOnTeam.length > 0) {
+      const suspiciousNames = suspiciousOnTeam.map(i => `${i}:${gameState.player.names[i]}`).join(', ');
+      teamAnalysis = `\n\nWARNING: These proposed team members were on failed missions: ${suspiciousNames}\n- This is suspicious and suggests they might be evil.\n`;
+    }
+    
+    // Check if team includes known good/evil players
+    let knowledgeAnalysis = '';
+    if (visiblePlayers.length > 0) {
+      const knownGoodOnTeam = visiblePlayers
+        .filter(p => (p.reason.includes('good') || p.reason.includes('merlin') || p.reason.includes('percival')) && proposedTeamIndices.includes(p.playerId))
+        .map(p => `${p.playerId}:${gameState.player.names[p.playerId]}`);
+      const knownEvilOnTeam = visiblePlayers
+        .filter(p => (p.reason.includes('evil') || p.reason.includes('spy')) && proposedTeamIndices.includes(p.playerId))
+        .map(p => `${p.playerId}:${gameState.player.names[p.playerId]}`);
+      
+      if (knownGoodOnTeam.length > 0 || knownEvilOnTeam.length > 0) {
+        knowledgeAnalysis = '\n\nYOUR KNOWLEDGE ABOUT TEAM MEMBERS:\n';
+        if (knownGoodOnTeam.length > 0) {
+          knowledgeAnalysis += `- Known good players on team: ${knownGoodOnTeam.join(', ')} (trustworthy)\n`;
+        }
+        if (knownEvilOnTeam.length > 0) {
+          knowledgeAnalysis += `- Known evil players on team: ${knownEvilOnTeam.join(', ')} (DANGEROUS - will sabotage!)\n`;
+        }
+      }
+    }
     
     const prompt = `${systemPrompt}
 
-${gameContext}
+${gameContext}${visibleInfo}
 
-${chatContext}
+CURRENT SITUATION:
+- Mission ${missionNumber} (Round ${missionNumber})
+- Team size needed: ${requiredTeamSize} players
+- Previous results: ${resultsText}
+- Current phase: ${gameState.game.phase}
 
-Proposed Team for Mission ${gameState.game.mission}:
-${teamNames}
+${chatContext}${teamAnalysis}${knowledgeAnalysis}
 
-You must vote to APPROVE or REJECT this team.
+A team has been proposed for Mission ${missionNumber} by ${proposer}.
 
-Instructions:
-- Vote strategically based on your role and what you know
-- Good players should approve teams they believe are mostly good
-- Evil players may reject good teams or approve teams with evil players
-- Consider previous mission results and voting patterns
-- Respond with ONLY "APPROVE" or "REJECT" (all caps, nothing else)`;
+Proposed team: ${proposedTeam}${proposerNote}
+
+STRATEGIC ANALYSIS - You must vote APPROVE or REJECT. Consider:
+- Your role and team goals (${playerRole === 'merlin' || playerRole === 'percival' || playerRole === 'loyal_servant' ? 'good team wants missions to succeed' : 'evil team wants missions to fail'})
+- Trustworthiness: Are the proposed team members trustworthy based on previous missions?
+- Your knowledge: Do you know if any team members are good or evil?
+- Previous results: Who was on failed missions? Are they on this team?
+- Voting patterns: Has ${proposer} been making suspicious proposals?
+- Strategic implications: ${playerRole === 'merlin' || playerRole === 'percival' || playerRole === 'loyal_servant' ? 'Reject teams with suspicious players. Approve teams with known good players.' : 'Approve teams that include evil players. Reject teams with only good players.'}
+${isProposer ? '- Since you proposed this team, you should typically APPROVE it unless you made an error' : ''}
+
+Think strategically and vote based on all available information.
+
+Output ONLY "APPROVE" or "REJECT" (all caps, nothing else).`;
 
     return [
       { role: 'system', content: prompt }
@@ -325,25 +394,35 @@ Instructions:
   ): Array<{ role: string; content: string }> {
     const systemPrompt = this.systemPrompts[playerRole] || this.systemPrompts.agent;
     const gameContext = this.buildGameContext(gameState, playerRole, playerIndex, visiblePlayers);
-    const chatContext = this.buildChatContext(chatHistory);
+    
+    // During mission phase, use gameState.mission instead of gameState.team
+    if (!gameState.mission) {
+      throw new Error('No mission available');
+    }
+    
+    const missionTeam = gameState.mission.members.map(i => `${i}:${gameState.player.names[i]}`).join(', ');
+    const missionNumber = gameState.game.mission || 1;
     
     let voteInstructions = '';
     if (canFail) {
-      voteInstructions = `You are on the mission team. As an EVIL player, you can vote SUCCESS or FAIL.
-- Vote FAIL if you want the mission to fail (helping evil team)
-- Vote SUCCESS if you want to appear innocent (but this helps good team)
-- Consider the mission number and how many fails are needed
-- Respond with ONLY "SUCCESS" or "FAIL" (all caps, nothing else)`;
+      voteInstructions = `You are on the mission team. As an EVIL player, you can vote either SUCCESS or FAIL. Consider:
+- If you vote FAIL, the mission fails (helping evil win)
+- If you vote SUCCESS, the mission might succeed (helping good win)
+- Strategic timing: sometimes it's better to let early missions succeed to avoid suspicion
+- Current game state: ${gameState.missionHistory.length} missions completed, ${gameState.missionHistory.filter(m => m.actions.every(a => a === 'success')).length} succeeded
+
+Output ONLY "SUCCESS" or "FAIL" (all caps, nothing else).`;
     } else {
-      voteInstructions = `You are on the mission team. As a GOOD player, you can only vote SUCCESS.
-- Respond with ONLY "SUCCESS" (all caps, nothing else)`;
+      voteInstructions = `You are on the mission team. As a GOOD player, you must vote SUCCESS to help your team win.
+
+Output ONLY "SUCCESS" (all caps, nothing else).`;
     }
     
     const prompt = `${systemPrompt}
 
 ${gameContext}
 
-${chatContext}
+Mission ${missionNumber} is starting. You are on the mission team: ${missionTeam}
 
 ${voteInstructions}`;
 
@@ -362,7 +441,7 @@ ${voteInstructions}`;
   ): Array<{ role: string; content: string }> {
     const systemPrompt = this.systemPrompts[playerRole] || this.systemPrompts.assassin;
     const gameContext = this.buildGameContext(gameState, playerRole, playerIndex, visiblePlayers);
-    const chatContext = this.buildChatContext(chatHistory);
+    const chatContext = this.buildChatContext(chatHistory, gameState);
     
     const targetList = targets.map(t => 
       `${t.index}: ${t.name}${visiblePlayers.some(v => v.playerId === t.index && v.reason.includes('evil')) ? ' (you saw this player as evil)' : ''}`
