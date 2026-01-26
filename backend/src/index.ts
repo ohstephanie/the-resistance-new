@@ -251,8 +251,8 @@ app.post("/api/admin/create-game", verifyAdmin, async (req, res) => {
       return res.status(400).json({ error: "playerSocketIds must be a non-empty array" });
     }
     
-    if (!["easy", "medium", "hard"].includes(difficulty)) {
-      return res.status(400).json({ error: "difficulty must be 'easy', 'medium', or 'hard'" });
+    if (difficulty !== "easy") {
+      return res.status(400).json({ error: "Only 'easy' difficulty games can be created from the admin panel" });
     }
     
     if (typeof numEvilAI !== "number" || numEvilAI < 0) {
@@ -281,6 +281,44 @@ app.post("/api/admin/remove-player", verifyAdmin, (req, res) => {
     
     server.queueManager.removePlayersFromQueue([socketId]);
     res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Unknown error" });
+  }
+});
+
+// Get participant codes
+app.get("/api/admin/participant-codes", verifyAdmin, (req, res) => {
+  try {
+    const codes = server.getParticipantCodes();
+    res.json({ codes });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Unknown error" });
+  }
+});
+
+// Add participant code
+app.post("/api/admin/participant-codes", verifyAdmin, (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code || typeof code !== "string") {
+      return res.status(400).json({ error: "code must be a non-empty string" });
+    }
+    server.addParticipantCode(code.trim());
+    res.json({ success: true, codes: server.getParticipantCodes() });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Unknown error" });
+  }
+});
+
+// Remove participant code
+app.delete("/api/admin/participant-codes", verifyAdmin, (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code || typeof code !== "string") {
+      return res.status(400).json({ error: "code must be a non-empty string" });
+    }
+    server.removeParticipantCode(code.trim());
+    res.json({ success: true, codes: server.getParticipantCodes() });
   } catch (error: any) {
     res.status(500).json({ error: error.message || "Unknown error" });
   }

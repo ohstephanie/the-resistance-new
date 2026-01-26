@@ -38,6 +38,8 @@ export default function AdminView() {
   const [numEvilAI, setNumEvilAI] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [participantCodes, setParticipantCodes] = useState<string[]>([]);
+  const [newCode, setNewCode] = useState("");
 
   // Check if already authenticated
   useEffect(() => {
@@ -46,6 +48,7 @@ export default function AdminView() {
       setSessionToken(token);
       setIsAuthenticated(true);
       fetchResearchMode(token);
+      fetchParticipantCodes(token);
       startPolling(token);
     }
   }, []);
@@ -65,6 +68,24 @@ export default function AdminView() {
       }
     } catch (err) {
       console.error("Failed to fetch research mode:", err);
+    }
+  };
+
+  const fetchParticipantCodes = async (token: string) => {
+    try {
+      const response = await fetch("/api/admin/participant-codes", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setParticipantCodes(data.codes || []);
+      } else if (response.status === 401) {
+        setIsAuthenticated(false);
+        setSessionToken(null);
+        localStorage.removeItem("adminSessionToken");
+      }
+    } catch (err) {
+      console.error("Failed to fetch participant codes:", err);
     }
   };
 
@@ -116,6 +137,7 @@ export default function AdminView() {
         setIsAuthenticated(true);
         localStorage.setItem("adminSessionToken", data.sessionToken);
         fetchResearchMode(data.sessionToken);
+        fetchParticipantCodes(data.sessionToken);
         startPolling(data.sessionToken);
       } else {
         const errorData = await response.json();
@@ -230,6 +252,72 @@ export default function AdminView() {
     setSelectedPlayers(newSelected);
   };
 
+  const handleAddParticipantCode = async () => {
+    if (!sessionToken || !newCode.trim()) {
+      setError("Please enter a participant code");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/participant-codes", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code: newCode.trim() }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setParticipantCodes(data.codes || []);
+        setNewCode("");
+        setError(null);
+      } else if (response.status === 401) {
+        setError("Session expired. Please log in again.");
+        setIsAuthenticated(false);
+        setSessionToken(null);
+        localStorage.removeItem("adminSessionToken");
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to add participant code");
+      }
+    } catch (err) {
+      setError("Failed to add participant code");
+    }
+  };
+
+  const handleRemoveParticipantCode = async (code: string) => {
+    if (!sessionToken) return;
+
+    try {
+      const response = await fetch("/api/admin/participant-codes", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setParticipantCodes(data.codes || []);
+        setError(null);
+      } else if (response.status === 401) {
+        setError("Session expired. Please log in again.");
+        setIsAuthenticated(false);
+        setSessionToken(null);
+        localStorage.removeItem("adminSessionToken");
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to remove participant code");
+      }
+    } catch (err) {
+      setError("Failed to remove participant code");
+    }
+  };
+
   const humanPlayers = queuePlayers.filter((p) => !p.isAI);
   const requiredPlayers = gameDifficulty === "easy" ? 5 : gameDifficulty === "medium" ? 7 : 9;
   const maxEvilAI = gameDifficulty === "easy" ? 2 : gameDifficulty === "medium" ? 3 : 4;
@@ -301,6 +389,59 @@ export default function AdminView() {
           </Card.Body>
         </Card>
 
+        {/* Participant Codes */}
+        <Card className={s.card}>
+          <Card.Body>
+            <Card.Title>
+              Participant Codes <Badge bg="secondary">{participantCodes.length}</Badge>
+            </Card.Title>
+            <p className={s.description}>
+              Manage participant codes for research mode. Users must enter a valid code to join the queue when research mode is enabled.
+            </p>
+            <Form.Group className="mb-3">
+              <Form.Label>Add New Code</Form.Label>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <Form.Control
+                  type="text"
+                  value={newCode}
+                  onChange={(e) => setNewCode(e.target.value)}
+                  placeholder="Enter participant code"
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      handleAddParticipantCode();
+                    }
+                  }}
+                />
+                <Button variant="primary" onClick={handleAddParticipantCode} disabled={!newCode.trim()}>
+                  Add
+                </Button>
+              </div>
+            </Form.Group>
+            <ListGroup variant="flush" className={s.playerList}>
+              {participantCodes.length === 0 ? (
+                <ListGroup.Item>No participant codes. Add codes to enable research mode access.</ListGroup.Item>
+              ) : (
+                participantCodes.map((code) => (
+                  <ListGroup.Item key={code}>
+                    <div className={s.playerItem}>
+                      <span>
+                        <strong>{code}</strong>
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline-danger"
+                        onClick={() => handleRemoveParticipantCode(code)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </ListGroup.Item>
+                ))
+              )}
+            </ListGroup>
+          </Card.Body>
+        </Card>
+
         {/* Queue Players */}
         <Card className={s.card}>
           <Card.Body>
@@ -350,11 +491,13 @@ export default function AdminView() {
                 <Form.Select
                   value={gameDifficulty}
                   onChange={(e) => setGameDifficulty(e.target.value as "easy" | "medium" | "hard")}
+                  disabled
                 >
                   <option value="easy">Easy (5 players)</option>
-                  <option value="medium">Medium (7 players)</option>
-                  <option value="hard">Hard (9 players)</option>
                 </Form.Select>
+                <Form.Text className="text-muted">
+                  Only easy difficulty games can be created from the admin panel.
+                </Form.Text>
               </Form.Group>
 
               <Form.Group className="mb-3">

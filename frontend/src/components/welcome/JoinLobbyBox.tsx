@@ -2,7 +2,8 @@ import { LobbyAction } from "common-modules";
 import React, { useState, useEffect } from "react";
 import Button from "react-bootstrap/esm/Button";
 import Form from "react-bootstrap/esm/Form";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { LobbySelector } from "../../store";
 import s from "./JoinLobbyBox.module.scss";
 
 type JoinLobbyBoxProps = {
@@ -13,8 +14,18 @@ type Difficulty = "easy" | "medium" | "hard";
 
 export default function JoinLobbyBox(props: JoinLobbyBoxProps) {
   const dispatch = useDispatch();
+  const queueError = useSelector(LobbySelector.queueError);
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(null);
   const [researchMode, setResearchMode] = useState(false);
+  const [participantCode, setParticipantCode] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
+  
+  // Update local error state when queue error changes
+  useEffect(() => {
+    if (queueError) {
+      setCodeError(queueError);
+    }
+  }, [queueError]);
 
   useEffect(() => {
     // Check research mode status
@@ -46,10 +57,18 @@ export default function JoinLobbyBox(props: JoinLobbyBoxProps) {
   }, [selectedDifficulty]);
 
   const handleJoinQueue = () => {
-    // In research mode, use "easy" as default
+    // In research mode, use "easy" as default and require participant code
     const difficulty = researchMode ? "easy" : selectedDifficulty;
     if (difficulty) {
-      dispatch(LobbyAction.clientJoinQueue({ difficulty }));
+      if (researchMode && !participantCode.trim()) {
+        setCodeError("Participant code is required in research mode");
+        return;
+      }
+      setCodeError(null);
+      dispatch(LobbyAction.clientJoinQueue({ 
+        difficulty, 
+        participantCode: researchMode ? participantCode.trim() : undefined 
+      }));
     }
   };
 
@@ -61,15 +80,39 @@ export default function JoinLobbyBox(props: JoinLobbyBoxProps) {
         <p>You'll receive a random animal name when you join.</p>
       </div>
       {researchMode ? (
-        // Research mode: single button, no difficulty selection
-        <Button 
-          onClick={handleJoinQueue}
-          size="lg"
-          variant="primary"
-          className={s.joinButton}
-        >
-          Join Queue
-        </Button>
+        // Research mode: participant code input and single button
+        <>
+          <Form.Group className="mb-3">
+            <Form.Label>Participant Code</Form.Label>
+            <Form.Control
+              type="text"
+              value={participantCode}
+              onChange={(e) => {
+                setParticipantCode(e.target.value);
+                setCodeError(null);
+              }}
+              placeholder="Enter your participant code"
+              isInvalid={!!codeError}
+            />
+            {(codeError || queueError) && (
+              <Form.Control.Feedback type="invalid">
+                {codeError || queueError}
+              </Form.Control.Feedback>
+            )}
+            <Form.Text className="text-muted">
+              A participant code is required to join the queue in research mode.
+            </Form.Text>
+          </Form.Group>
+          <Button 
+            onClick={handleJoinQueue}
+            size="lg"
+            variant="primary"
+            className={s.joinButton}
+            disabled={!participantCode.trim()}
+          >
+            Join Queue
+          </Button>
+        </>
       ) : (
         // Normal mode: show difficulty selection
         <>

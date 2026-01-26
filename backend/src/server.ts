@@ -20,6 +20,7 @@ export class Server {
   private researchMode: boolean = false;
   private adminPassword: string;
   private adminSessions: Set<string> = new Set(); // Store session tokens
+  private participantCodes: Set<string> = new Set(); // Bank of valid participant codes
   
   constructor(io: socketIO.Server) {
     this.io = io;
@@ -31,6 +32,18 @@ export class Server {
     
     // Set admin password from environment or use default
     this.adminPassword = process.env.ADMIN_PASSWORD || "admin123";
+    
+    // Load participant codes from environment variable (comma-separated)
+    const codesEnv = process.env.PARTICIPANT_CODES || "";
+    if (codesEnv) {
+      codesEnv.split(",").forEach(code => {
+        const trimmed = code.trim();
+        if (trimmed) {
+          this.participantCodes.add(trimmed);
+        }
+      });
+      console.log(`[Server] Loaded ${this.participantCodes.size} participant codes`);
+    }
     
     // Initialize AI agents if enabled
     this.initializeLLMAgents();
@@ -105,11 +118,32 @@ export class Server {
     return activeGames;
   }
   
+  verifyParticipantCode(code: string): boolean {
+    return this.participantCodes.has(code);
+  }
+  
+  addParticipantCode(code: string): void {
+    this.participantCodes.add(code);
+  }
+  
+  removeParticipantCode(code: string): void {
+    this.participantCodes.delete(code);
+  }
+  
+  getParticipantCodes(): string[] {
+    return Array.from(this.participantCodes);
+  }
+  
   async createGameManually(
     selectedPlayerSocketIds: string[],
     difficulty: "easy" | "medium" | "hard",
     numEvilAI: number
   ): Promise<string | null> {
+    // Only allow easy difficulty from admin panel
+    if (difficulty !== "easy") {
+      console.error("[Admin] Only 'easy' difficulty games can be created from admin panel");
+      return null;
+    }
     // Find selected players in queues
     const selectedPlayers: Array<{ socket: Socket; name: string; socketId: string }> = [];
     for (const [diff, queue] of this.queueManager.queues.entries()) {
@@ -312,11 +346,36 @@ export class Server {
       }
       // Add to queue with difficulty
       const difficulty = (action as any).payload?.difficulty;
+      const participantCode = (action as any).payload?.participantCode;
+      
       if (!difficulty || !["easy", "medium", "hard"].includes(difficulty)) {
         console.error("Invalid or missing difficulty in clientJoinQueue action");
+        socket.emit("action", actionFromServer(LobbyAction.updateQueueState({ 
+          inQueue: false, 
+          queuePosition: 0,
+          name: "",
+          error: "Invalid difficulty"
+        })));
         return;
       }
-      this.queueManager.addToQueue(socket, difficulty);
+      
+      // If research mode is enabled, validate participant code
+      if (this.researchMode) {
+        if (!participantCode || !this.verifyParticipantCode(participantCode)) {
+          console.log(`[Queue] Rejected queue entry - invalid participant code: ${participantCode || 'missing'}`);
+          socket.emit("action", actionFromServer(LobbyAction.updateQueueState({ 
+            inQueue: false, 
+            queuePosition: 0,
+            name: "",
+            error: "Invalid participant code"
+          })));
+          return;
+        }
+        // In research mode, force difficulty to "easy"
+        this.queueManager.addToQueue(socket, "easy");
+      } else {
+        this.queueManager.addToQueue(socket, difficulty);
+      }
     } else if (action.type === clientLeaveQueue) {
       // Remove from queue
       this.queueManager.removeFromQueue(socket.id);

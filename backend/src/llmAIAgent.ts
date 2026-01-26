@@ -268,6 +268,25 @@ export class LLMAIAgent {
     return this.generateChatResponse();
   }
 
+  /**
+   * Process AI chat message: strip quotes and limit to 12 words
+   */
+  private processChatMessage(message: string): string {
+    if (!message) return message;
+    
+    // Strip leading and trailing quotation marks (single or double)
+    let processed = message.trim();
+    processed = processed.replace(/^["']+|["']+$/g, '');
+    
+    // Limit to 12 words
+    const words = processed.split(/\s+/).filter(word => word.length > 0);
+    if (words.length > 12) {
+      processed = words.slice(0, 12).join(' ');
+    }
+    
+    return processed.trim();
+  }
+
   private async generateChatResponse(): Promise<void> {
     if (!this.gameState || !this.role) {
       this.logger(`[${this.playerName}] Cannot generate chat: gameState=${!!this.gameState}, role=${this.role}`);
@@ -285,7 +304,7 @@ export class LLMAIAgent {
     // Check if we should use fallback only
     if (this.useFallbackOnly) {
       this.logger(`[${this.playerName}] Using fallback only mode, skipping API request`);
-      const fallbackMessage = this.getFallbackChatResponse();
+      const fallbackMessage = this.processChatMessage(this.getFallbackChatResponse());
       const chatAction = GameAction.newPlayerChatMessage({
         player: this.playerIndex,
         message: fallbackMessage
@@ -315,7 +334,7 @@ export class LLMAIAgent {
         temperature: 0.8
       });
       
-      const chatMessage = response.content.trim();
+      let chatMessage = response.content.trim();
       
       // Handle empty responses
       if (!chatMessage || chatMessage.length === 0) {
@@ -331,6 +350,9 @@ export class LLMAIAgent {
         this.logger(`[${this.playerName}] Received empty response (finishReason: ${response.finishReason}, inputTokens: ${inputTokens}), using fallback`);
         throw new Error('Received empty response from API');
       }
+      
+      // Process the message: strip quotes and limit to 12 words
+      chatMessage = this.processChatMessage(chatMessage);
       
       this.logger(`[${this.playerName}] Generated chat message: "${chatMessage}"`);
       
@@ -365,7 +387,7 @@ export class LLMAIAgent {
         this.logger(`[${this.playerName}] Error stack:`, error.stack);
       }
       this.handleError('chat', error as Error);
-      const fallbackMessage = this.getFallbackChatResponse();
+      const fallbackMessage = this.processChatMessage(this.getFallbackChatResponse());
       const chatAction = GameAction.newPlayerChatMessage({
         player: this.playerIndex,
         message: fallbackMessage

@@ -175,11 +175,16 @@ ${chatContext}${strategicAnalysis}${teamGuidance}
 
 IMPORTANT: You are speaking during Mission ${missionNumber}. Do NOT reference "first mission" or "mission one" unless this is actually Mission 1.
 
-YOUR TASK: Generate a strategic chat message (20-30 words) that:
+YOUR TASK: Generate a strategic chat message (12 words or less) that:
 1. States your reasoning based on previous mission results and what you know
 2. Suggests specific players who should be on the team (use player names, not P1/P2)
 3. References voting patterns or suspicious behavior if relevant
 4. Fits your role and helps your team's strategy
+
+IMPORTANT: 
+- Keep your message to 12 words or less
+- Do NOT wrap your message in quotation marks
+- Write your message directly without quotes
 
 Be strategic and explicit. Use player names. Reference previous results.`;
 

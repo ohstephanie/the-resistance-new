@@ -11,6 +11,7 @@ const lobbyGameOptions = (state: RootState) => state.lobby.gameInitOptions;
 const inQueue = (state: RootState) => state.lobby.inQueue;
 const queuePosition = (state: RootState) => state.lobby.queuePosition;
 const playerName = (state: RootState) => state.lobby.playerName;
+const queueError = (state: RootState) => state.lobby.queueError;
 
 const lobbyIndex = createSelector(
   socketID,
@@ -36,4 +37,5 @@ export const LobbySelector = {
   inQueue,
   queuePosition,
   playerName,
+  queueError,
 };

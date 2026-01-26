@@ -10,4 +10,5 @@ export type LobbyState = {
   inQueue: boolean;
   queuePosition: number;
   playerName: string;
+  queueError?: string;
 };

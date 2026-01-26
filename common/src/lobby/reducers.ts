@@ -20,6 +20,7 @@ const initialState: LobbyState = {
   inQueue: false,
   queuePosition: 0,
   playerName: "",
+  queueError: undefined,
 };
 
 export const LobbyReducer = createReducer(initialState, (builder) => {
@@ -37,6 +38,7 @@ export const LobbyReducer = createReducer(initialState, (builder) => {
         inQueue: false,
         queuePosition: 0,
         playerName: "",
+        queueError: undefined,
       };
     })
     .addCase(reset, (state, action) => {
@@ -65,5 +67,6 @@ export const LobbyReducer = createReducer(initialState, (builder) => {
       state.inQueue = action.payload.inQueue;
       state.queuePosition = action.payload.queuePosition;
       state.playerName = action.payload.name;
+      state.queueError = action.payload.error;
     });
 });
