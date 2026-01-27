@@ -43,6 +43,7 @@ export class LLMAIAgent {
   private socketId: string;
   private socket: Socket;
   private lastSpeakingTurnIndex: number = -1; // Track which turn we last spoke on
+  private lastSpeakingTurnOrder: number[] | null = null; // Track the turn order to detect resets
   
   public role: Role | null = null;
   private team: 'agent' | 'spy' | null = null;
@@ -171,16 +172,38 @@ export class LLMAIAgent {
       // Check current phase and act accordingly
       if (!this.gameState) return;
       
+      // Reset tracking if speaking turn was active and is now null (e.g., entered mission phase)
+      if (this.lastSpeakingTurnOrder !== null && !this.gameState.speakingTurn) {
+        this.lastSpeakingTurnIndex = -1;
+        this.lastSpeakingTurnOrder = null;
+        this.logger(`[${this.playerName}] Speaking turn ended, resetting turn tracking`);
+      }
+      
       // Handle turn-based speaking system
       if (this.gameState.speakingTurn && this.gameState.speakingTurn.currentSpeaker === this.playerIndex) {
         // It's our turn to speak!
         const currentTurnIndex = this.gameState.speakingTurn.turnIndex;
+        const currentTurnOrder = this.gameState.speakingTurn.turnOrder;
         const timeRemaining = this.gameState.speakingTurn.timeRemaining;
+        
+        // Reset tracking if speaking turn cycle has been reset (new turn order or turnIndex reset to 0)
+        // This happens when speakingTurn was null and is now active again (e.g., new round)
+        if (this.lastSpeakingTurnOrder === null || 
+            !this.arraysEqual(this.lastSpeakingTurnOrder, currentTurnOrder) ||
+            (currentTurnIndex === 0 && this.lastSpeakingTurnIndex > 0)) {
+          // New speaking turn cycle detected - reset tracking
+          this.lastSpeakingTurnIndex = -1;
+          this.lastSpeakingTurnOrder = [...currentTurnOrder];
+          this.logger(`[${this.playerName}] Detected new speaking turn cycle, resetting turn tracking`);
+        }
         
         // Only send if we haven't already sent a message this turn
         if (this.lastSpeakingTurnIndex !== currentTurnIndex) {
           // Set this immediately to prevent multiple calls from queuing up
           this.lastSpeakingTurnIndex = currentTurnIndex;
+          if (this.lastSpeakingTurnOrder === null) {
+            this.lastSpeakingTurnOrder = [...currentTurnOrder];
+          }
           
           // Calculate delay to send message near the end of the turn (3 seconds before end to allow for API call time)
           // If timeRemaining is 10, wait 7 seconds. If timeRemaining is 5, wait 2 seconds, etc.
@@ -204,9 +227,14 @@ export class LLMAIAgent {
         if (currentLeader === this.playerIndex) {
           // Check if team is already proposed
           if (!this.gameState.team || this.gameState.team.members.length === 0) {
+            this.logger(`[${this.playerName}] It's my turn to propose a team (mission ${this.gameState.game.mission})`);
             await this.sleep(this.responseDelay);
             await this.handleTeamBuilding();
+          } else {
+            this.logger(`[${this.playerName}] Team already proposed, skipping (mission ${this.gameState.game.mission})`);
           }
+        } else {
+          this.logger(`[${this.playerName}] Not the leader (leader: ${currentLeader}, mission ${this.gameState.game.mission})`);
         }
         return;
       }
@@ -215,13 +243,16 @@ export class LLMAIAgent {
       if (this.gameState.game.phase === 'voting') {
         // Ensure team exists before trying to vote
         if (!this.gameState.team) {
-          this.logger(`[${this.playerName}] Voting phase but no team available (phase: ${this.gameState.game.phase})`);
+          this.logger(`[${this.playerName}] Voting phase but no team available (phase: ${this.gameState.game.phase}, mission ${this.gameState.game.mission})`);
           return;
         }
         const ourVote = this.gameState.team.votes[this.playerIndex];
         if (ourVote === 'none' || ourVote === undefined) {
+          this.logger(`[${this.playerName}] It's my turn to vote on the team (mission ${this.gameState.game.mission})`);
           await this.sleep(this.responseDelay);
           await this.handleTeamVoting();
+        } else {
+          this.logger(`[${this.playerName}] Already voted: ${ourVote} (mission ${this.gameState.game.mission})`);
         }
         return;
       }
@@ -229,7 +260,7 @@ export class LLMAIAgent {
       // Handle mission phase (only during 'mission', not 'mission-review')
       if (this.gameState.game.phase === 'mission') {
         if (!this.gameState.mission) {
-          this.logger(`[${this.playerName}] Mission phase but no mission available (phase: ${this.gameState.game.phase})`);
+          this.logger(`[${this.playerName}] Mission phase but no mission available (phase: ${this.gameState.game.phase}, mission ${this.gameState.game.mission})`);
           return;
         }
         if (this.gameState.mission.members.includes(this.playerIndex)) {
@@ -238,10 +269,15 @@ export class LLMAIAgent {
           if (memberIndex >= 0 && memberIndex < this.gameState.mission.actions.length) {
             const ourAction = this.gameState.mission.actions[memberIndex];
             if (ourAction === null) {
+              this.logger(`[${this.playerName}] It's my turn to vote on the mission (mission ${this.gameState.game.mission})`);
               await this.sleep(this.responseDelay);
               await this.handleMissionVote();
+            } else {
+              this.logger(`[${this.playerName}] Already voted on mission: ${ourAction} (mission ${this.gameState.game.mission})`);
             }
           }
+        } else {
+          this.logger(`[${this.playerName}] Not on mission team (mission ${this.gameState.game.mission})`);
         }
         return;
       }
@@ -780,6 +816,15 @@ export class LLMAIAgent {
   
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+  
+  private arraysEqual(a: number[] | null, b: number[] | null): boolean {
+    if (a === null || b === null) return a === b;
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
   }
 }
 

@@ -377,6 +377,7 @@ STRATEGIC ANALYSIS - You must vote APPROVE or REJECT. Consider:
 - Your knowledge: Do you know if any team members are good or evil?
 - Previous results: Who was on failed missions? Are they on this team?
 - Voting patterns: Has ${proposer} been making suspicious proposals?
+- Your message history: If you suggested this team, you should typically APPROVE it unless you made an error
 - Strategic implications: ${playerRole === 'merlin' || playerRole === 'percival' || playerRole === 'loyal_servant' ? 'Reject teams with suspicious players. Approve teams with known good players.' : 'Approve teams that include evil players. Reject teams with only good players.'}
 ${isProposer ? '- Since you proposed this team, you should typically APPROVE it unless you made an error' : ''}
 
