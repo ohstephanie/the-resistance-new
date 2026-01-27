@@ -21,6 +21,7 @@ export class Server {
   private adminPassword: string;
   private adminSessions: Set<string> = new Set(); // Store session tokens
   private participantCodes: Set<string> = new Set(); // Bank of valid participant codes
+  private socketToParticipantCode: Map<string, string> = new Map(); // Track participant code per socket
   
   constructor(io: socketIO.Server) {
     this.io = io;
@@ -132,6 +133,10 @@ export class Server {
   
   getParticipantCodes(): string[] {
     return Array.from(this.participantCodes);
+  }
+  
+  getParticipantCodeForSocket(socketId: string): string | null {
+    return this.socketToParticipantCode.get(socketId) || null;
   }
   
   async createGameManually(
@@ -321,6 +326,9 @@ export class Server {
     const roomID = this.sockets.get(socket.id);
     this.sockets.delete(socket.id);
     
+    // Remove participant code mapping
+    this.socketToParticipantCode.delete(socket.id);
+    
     // Remove from queue if in queue
     this.queueManager.removeFromQueue(socket.id);
     
@@ -371,6 +379,8 @@ export class Server {
           })));
           return;
         }
+        // Store participant code for this socket
+        this.socketToParticipantCode.set(socket.id, participantCode.trim());
         // In research mode, force difficulty to "easy"
         this.queueManager.addToQueue(socket, "easy");
       } else {

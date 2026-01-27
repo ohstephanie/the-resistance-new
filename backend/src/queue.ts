@@ -72,7 +72,15 @@ export class QueueManager {
     return availableNames[randomIndex];
   }
 
-  addToQueue(socket: Socket, difficulty: Difficulty, isAI: boolean = false) {
+  addToQueue(socket: Socket, difficulty: Difficulty, isAI: boolean = false, forceNewName: boolean = false) {
+    // If forceNewName is true (e.g., in research mode after game completion), 
+    // remove player from any existing queue first to ensure fresh name assignment
+    if (forceNewName) {
+      this.removeFromQueue(socket.id);
+    }
+    
+    // Always generate a new random name when adding to queue
+    // In research mode, this ensures players get a new name after each game
     const name = this.generateRandomName();
     const queue = this.queues.get(difficulty);
     if (!queue) {
@@ -276,13 +284,27 @@ export class QueueManager {
     const playerIsAI = initialGameState.player.socketIDs.map(
       socketID => socketID !== null && socketID.startsWith('ai_')
     );
+    
+    // Get participant codes for each player (null for AI players)
+    const server = (this.io as any).serverInstance;
+    const playerParticipantCodes = initialGameState.player.socketIDs.map(
+      socketID => {
+        if (!socketID || socketID.startsWith('ai_')) {
+          return null; // AI players don't have participant codes
+        }
+        // Get participant code from server if available
+        return server?.getParticipantCodeForSocket?.(socketID) || null;
+      }
+    );
+    
     this.database.startGame(
       roomID,
       gameMode,
       difficulty,
       initialGameState.player.names,
       initialGameState.player.roles,
-      playerIsAI
+      playerIsAI,
+      playerParticipantCodes
     );
 
     // Get everyone to join game

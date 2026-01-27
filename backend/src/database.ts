@@ -12,6 +12,7 @@ export interface GameRecord {
   player_names: string; // JSON array
   player_roles: string; // JSON array
   player_is_ai: string; // JSON array of booleans
+  player_participant_codes: string; // JSON array of participant codes (null for AI players)
   winner: string | null;
   started_at: string;
   ended_at: string | null;
@@ -24,6 +25,7 @@ export interface GameActionRecord {
   action_type: string;
   action_payload: string; // JSON
   player_index: number | null;
+  participant_code: string | null;
   timestamp: string;
   game_phase: string;
   mission_number: number;
@@ -34,6 +36,7 @@ export interface ChatMessageRecord {
   game_id: number;
   message_type: string; // 'player' or 'system'
   player_index: number | null;
+  participant_code: string | null;
   content: string;
   timestamp: string;
 }
@@ -91,6 +94,7 @@ export class GameDatabase {
         player_names TEXT NOT NULL,
         player_roles TEXT NOT NULL,
         player_is_ai TEXT NOT NULL,
+        player_participant_codes TEXT,
         winner TEXT,
         started_at TEXT NOT NULL,
         ended_at TEXT,
@@ -104,6 +108,13 @@ export class GameDatabase {
     } catch (e) {
       // Column already exists, ignore
     }
+    
+    // Migration: Add player_participant_codes column if it doesn't exist
+    try {
+      this.db.exec(`ALTER TABLE games ADD COLUMN player_participant_codes TEXT`);
+    } catch (e) {
+      // Column already exists, ignore
+    }
 
     // Game actions table
     this.db.exec(`
@@ -113,12 +124,20 @@ export class GameDatabase {
         action_type TEXT NOT NULL,
         action_payload TEXT,
         player_index INTEGER,
+        participant_code TEXT,
         timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         game_phase TEXT,
         mission_number INTEGER,
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
       )
     `);
+    
+    // Migration: Add participant_code column to game_actions if it doesn't exist
+    try {
+      this.db.exec(`ALTER TABLE game_actions ADD COLUMN participant_code TEXT`);
+    } catch (e) {
+      // Column already exists, ignore
+    }
 
     // Chat messages table
     this.db.exec(`
@@ -127,11 +146,19 @@ export class GameDatabase {
         game_id INTEGER NOT NULL,
         message_type TEXT NOT NULL,
         player_index INTEGER,
+        participant_code TEXT,
         content TEXT NOT NULL,
         timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
       )
     `);
+    
+    // Migration: Add participant_code column to chat_messages if it doesn't exist
+    try {
+      this.db.exec(`ALTER TABLE chat_messages ADD COLUMN participant_code TEXT`);
+    } catch (e) {
+      // Column already exists, ignore
+    }
 
     // Teams table (proposals and votes)
     this.db.exec(`
@@ -179,16 +206,22 @@ export class GameDatabase {
     difficulty: string | null,
     playerNames: string[],
     playerRoles: string[],
-    playerIsAI: boolean[] = []
+    playerIsAI: boolean[] = [],
+    playerParticipantCodes: (string | null)[] = []
   ): number {
     // If playerIsAI is not provided, create array of false values
     const isAIArray = playerIsAI.length === playerNames.length 
       ? playerIsAI 
       : new Array(playerNames.length).fill(false);
     
+    // If playerParticipantCodes is not provided, create array of null values
+    const participantCodesArray = playerParticipantCodes.length === playerNames.length
+      ? playerParticipantCodes
+      : new Array(playerNames.length).fill(null);
+    
     const stmt = this.db.prepare(`
-      INSERT INTO games (room_id, game_mode, difficulty, num_players, player_names, player_roles, player_is_ai, started_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO games (room_id, game_mode, difficulty, num_players, player_names, player_roles, player_is_ai, player_participant_codes, started_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `);
 
     const result = stmt.run(
@@ -198,7 +231,8 @@ export class GameDatabase {
       playerNames.length,
       JSON.stringify(playerNames),
       JSON.stringify(playerRoles),
-      JSON.stringify(isAIArray)
+      JSON.stringify(isAIArray),
+      JSON.stringify(participantCodesArray)
     );
 
     const gameId = result.lastInsertRowid as number;
@@ -228,7 +262,8 @@ export class GameDatabase {
   saveAction(
     roomID: string,
     action: AnyAction,
-    gameState: GameState
+    gameState: GameState,
+    participantCode: string | null = null
   ) {
     const gameId = this.currentGameId.get(roomID);
     if (!gameId) return;
@@ -242,8 +277,8 @@ export class GameDatabase {
     }
 
     const stmt = this.db.prepare(`
-      INSERT INTO game_actions (game_id, action_type, action_payload, player_index, game_phase, mission_number)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO game_actions (game_id, action_type, action_payload, player_index, participant_code, game_phase, mission_number)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -251,24 +286,25 @@ export class GameDatabase {
       action.type,
       JSON.stringify(action.payload || {}),
       playerIndex,
+      participantCode,
       gameState.game.phase,
       gameState.game.mission
     );
   }
 
-  saveChatMessage(roomID: string, message: ChatMessage) {
+  saveChatMessage(roomID: string, message: ChatMessage, participantCode: string | null = null) {
     const gameId = this.currentGameId.get(roomID);
     if (!gameId) return;
 
     const stmt = this.db.prepare(`
-      INSERT INTO chat_messages (game_id, message_type, player_index, content)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO chat_messages (game_id, message_type, player_index, participant_code, content)
+      VALUES (?, ?, ?, ?, ?)
     `);
 
     if (message.type === "player") {
-      stmt.run(gameId, "player", message.player, message.content);
+      stmt.run(gameId, "player", message.player, participantCode, message.content);
     } else {
-      stmt.run(gameId, "system", null, message.content);
+      stmt.run(gameId, "system", null, null, message.content);
     }
   }
 

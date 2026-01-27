@@ -94,13 +94,27 @@ export class Lobby {
       const playerIsAI = initialGameState.player.socketIDs.map(
         socketID => socketID !== null && socketID.startsWith('ai_')
       );
+      
+      // Get participant codes for each player (null for AI players)
+      const server = (io as any).serverInstance;
+      const playerParticipantCodes = initialGameState.player.socketIDs.map(
+        socketID => {
+          if (!socketID || socketID.startsWith('ai_')) {
+            return null; // AI players don't have participant codes
+          }
+          // Get participant code from server if available
+          return server?.getParticipantCodeForSocket?.(socketID) || null;
+        }
+      );
+      
       this.database.startGame(
         this.id,
         gameMode,
         difficulty,
         initialGameState.player.names,
         initialGameState.player.roles,
-        playerIsAI
+        playerIsAI,
+        playerParticipantCodes
       );
       
       // Set up AI agent router for this game
@@ -178,8 +192,8 @@ export class Lobby {
               server.sockets.delete(socketID);
               socket.leave(this.id);
               
-              // Re-add to queue
-              server.queueManager.addToQueue(socket, "easy", false);
+              // Re-add to queue with a new random name (forceNewName=true ensures fresh name)
+              server.queueManager.addToQueue(socket, "easy", false, true);
             }
           }
         });
@@ -282,7 +296,7 @@ export class Game {
     io.to(this.roomID).emit("action", actionFromServer(tickAction));
     
     // Save game state changes
-    this.saveGameStateChanges(gameState);
+    this.saveGameStateChanges(gameState, io);
     
     // Route tick action to all AI agents
     if (this.routeToAIAgents) {
@@ -313,8 +327,8 @@ export class Game {
                   server.sockets.delete(socketID);
                   socket.leave(this.roomID);
                   
-                  // Re-add to queue (use "easy" as default in research mode)
-                  server.queueManager.addToQueue(socket, "easy", false);
+                  // Re-add to queue with a new random name (forceNewName=true ensures fresh name)
+                  server.queueManager.addToQueue(socket, "easy", false, true);
                 }
               }
             }
@@ -369,11 +383,16 @@ export class Game {
     const newGameState = this.store.getState();
     io.to(this.roomID).emit("action", actionFromServer(action));
     
-    // Save action to database
-    this.database.saveAction(this.roomID, action, newGameState);
+    // Save action to database with participant code
+    const server = (io as any).serverInstance;
+    const playerIndex = gameState.player.socketIDs.indexOf(socket.id);
+    const participantCode = playerIndex >= 0 && socket.id && !socket.id.startsWith('ai_')
+      ? (server?.getParticipantCodeForSocket?.(socket.id) || null)
+      : null;
+    this.database.saveAction(this.roomID, action, newGameState, participantCode);
     
     // Save game state changes (chats, teams, missions)
-    this.saveGameStateChanges(newGameState);
+    this.saveGameStateChanges(newGameState, io);
     
     // Route action to all AI agents in this room
     if (this.routeToAIAgents) {
@@ -381,12 +400,21 @@ export class Game {
     }
   }
   
-  private saveGameStateChanges(gameState: GameState) {
+  private saveGameStateChanges(gameState: GameState, io?: Server) {
     // Save new chat messages
     if (gameState.chat.length > this.lastChatLength) {
       const newMessages = gameState.chat.slice(this.lastChatLength);
+      const server = io ? (io as any).serverInstance : null;
       newMessages.forEach(msg => {
-        this.database.saveChatMessage(this.roomID, msg);
+        // Get participant code for player messages
+        let participantCode: string | null = null;
+        if (msg.type === "player" && msg.player !== null && server) {
+          const socketID = gameState.player.socketIDs[msg.player];
+          if (socketID && !socketID.startsWith('ai_')) {
+            participantCode = server.getParticipantCodeForSocket?.(socketID) || null;
+          }
+        }
+        this.database.saveChatMessage(this.roomID, msg, participantCode);
       });
       this.lastChatLength = gameState.chat.length;
     }
